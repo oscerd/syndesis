@@ -1460,5 +1460,84 @@
         }
       }
     }
+  },
+  {
+    "kind": "connector",
+    "data": {
+      "id": "aws-s3",
+      "name": "AWS-S3",
+      "description": "Direct AWS S3",
+      "icon": "fa-puzzle-piece",
+      "configuredProperties": {},
+      "properties":{
+    "accessKey":{
+      "kind":"parameter",
+      "displayName":"Access Key",
+      "group":"common",
+      "required":false,
+      "type":"string",
+      "javaType":"java.lang.String",
+      "deprecated":false,
+      "secret":false,
+      "description":"Amazon AWS Access Key"
+    },
+    "secretKey":{
+      "kind":"parameter",
+      "displayName":"Secret Key",
+      "group":"common",
+      "required":false,
+      "type":"string",
+      "javaType":"java.lang.String",
+      "deprecated":false,
+      "secret":false,
+      "description":"Amazon AWS Secret Key"
+    },
+    "deleteAfterWrite":{
+      "kind":"parameter",
+      "displayName":"Delete After Write",
+      "group":"producer",
+      "label":"producer",
+      "required":false,
+      "type":"boolean",
+      "javaType":"boolean",
+      "deprecated":false,
+      "secret":false,
+      "defaultValue":false,
+      "description":"Delete file object after the S3 file has been uploaded"
+    },
+    "region":{
+      "kind":"parameter",
+      "displayName":"Region",
+      "group":"producer",
+      "label":"producer",
+      "required":false,
+      "type":"string",
+      "javaType":"java.lang.String",
+      "deprecated":false,
+      "secret":false,
+      "description":"The region where the bucket is located. This option is used in the com.amazonaws.services.s3.model.CreateBucketRequest."
+    }
+    },
+      "actions": [
+        {
+          "name": "Copy Object",
+          "description": "Copy an object on AWS S3",
+          "id": "io.syndesis:aws-s3-copy-object-connector:latest",
+          "pattern": "To",
+          "actionType": "connector",
+          "descriptor": {
+            "camelConnectorGAV": "io.syndesis:aws-s3-copy-object-connector:@syndesis-connectors.version@",
+            "camelConnectorPrefix": "aws-s3-copy-object",
+            "inputDataShape": {
+               "kind": "java:File"
+            },
+            "outputDataShape": {
+               "kind": "none"
+            },
+            "propertyDefinitionSteps": []
+          }
+        }
+      ]
+    }
   }
 ]
