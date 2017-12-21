@@ -1818,14 +1818,14 @@
         },
         "bucketNameOrArn": {
           "kind": "path",
-          "displayName": "Bucket Name Or Arn",
+          "displayName": "Bucket Name Or Amazon Resource Name",
           "group": "common",
           "required": true,
           "type": "string",
           "javaType": "java.lang.String",
           "deprecated": false,
           "secret": false,
-          "description": "Bucket name or ARN"
+          "description": "Bucket Name Or Amazon Resource Name"
         }
       },
       "actions": [
