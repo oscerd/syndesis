@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
 
 import { SyndesisCommonModule, PatternflyUIModule } from '@syndesis/ui/common';
 
@@ -16,8 +17,8 @@ import { ApiConnectorReviewComponent } from './api-connector-review';
 import { ApiConnectorListComponent } from './api-connector-list.component';
 import { ApiConnectorDetailComponent } from './api-connector-detail.component';
 
+import { ApiConnectorEffects } from './api-connector.effects';
 import { ApiConnectorService } from './api-connector.service';
-import { ApiConnectorStore } from './api-connector.store';
 import { apiConnectorReducer } from './api-connector.reducer';
 
 const routes: Routes = [{
@@ -37,7 +38,8 @@ const routes: Routes = [{
     PatternflyUIModule,
     RouterModule.forChild(routes),
     SyndesisCommonModule,
-    StoreModule.forFeature('apiConnectorState', apiConnectorReducer)
+    StoreModule.forFeature('apiConnectorState', apiConnectorReducer),
+    EffectsModule.forFeature([ApiConnectorEffects]),
   ],
   exports: [RouterModule],
   declarations: [
@@ -51,8 +53,7 @@ const routes: Routes = [{
     ApiConnectorReviewComponent,
   ],
   providers: [
-    ApiConnectorService,   // TODO: Remove once custom ApiConnectors are managed thru a reducer
-    ApiConnectorStore      // TODO: Remove once custom ApiConnectors are managed thru a reducer
+    ApiConnectorService,
   ]
 })
 export class ApiConnectorModule { }
