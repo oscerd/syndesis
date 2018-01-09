@@ -15,7 +15,16 @@
  */
 package io.syndesis.s3.copy;
 
+import java.util.Map;
+
 import org.apache.camel.component.connector.DefaultConnectorComponent;
+
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 
 /**
  * Camel S3CopyObjectConnectorComponent connector
@@ -28,5 +37,27 @@ public class S3CopyObjectConnectorComponent extends DefaultConnectorComponent {
 
     public S3CopyObjectConnectorComponent(String componentSchema) {
         super("aws-s3-copy-object-connector", componentSchema, "io.syndesis.s3.copy.S3CopyObjectConnectorComponent");
+    }
+    
+    @Override
+    protected void doStart() throws Exception {
+        final Map<String, Object> options = getOptions();
+
+            if (options.containsKey("accessKey") && options.containsKey("secretKey") && options.containsKey("region")) {
+                String accessKey = (String) options.get("accessKey");
+                String secretKey = (String) options.get("secretKey");
+                String region = (String) options.get("region");
+            	
+                AWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+                AWSCredentialsProvider credentialsProvider = new AWSStaticCredentialsProvider(credentials);
+                AmazonS3 client = AmazonS3ClientBuilder.standard().withCredentials(credentialsProvider).withRegion(region).build();
+                
+                addOption("amazonS3Client", client);
+                options.remove("accessKey");
+                options.remove("secretKey");
+                options.remove("region");
+            } 
+
+        super.doStart();
     }
 }
