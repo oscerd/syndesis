@@ -9,6 +9,9 @@
               "id": "@project.groupId@:@project.artifactId@:@project.version@"
           }
       ],
+      "connectorCustomizers": [
+          "io.syndesis.connector.aws.s3.AWSS3Customizer"
+      ],
       "configuredProperties": {},
       "properties": {
         "accessKey": {
