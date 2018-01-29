@@ -17,12 +17,11 @@ package io.syndesis.connector.aws.s3;
 
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.extension.ComponentVerifierExtension;
-import org.springframework.stereotype.Component;
 
 import io.syndesis.verifier.api.ComponentVerifier;
 
-@Component("aws-s3")
 public class AWSS3Verifier extends ComponentVerifier {
+	
     public AWSS3Verifier() {
         super("aws-s3", AWSS3VerifierExtension.class);
     }
