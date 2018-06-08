@@ -1,5 +1,5 @@
 {
-      "id": "Gmail",
+      "id": "gmail",
       "name": "Google Mail",
       "description": "Send and receive mail through gmail",
       "icon": "fa-puzzle-piece",
@@ -175,6 +175,66 @@
                     "deprecated": false,
                     "secret": false,
                     "labelHint": "The subject to use"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Receive Email",
+          "description": "Receive email",
+          "id": "io.syndesis:gmail-receive-email-connector",
+          "pattern": "From",
+          "actionType": "connector",
+          "descriptor": {
+            "componentScheme": "google-mail-stream",
+            "inputDataShape": {
+              "kind": "none"
+            },
+            "outputDataShape": {
+              "kind": "none"
+            },
+            "propertyDefinitionSteps": [
+              {
+                "name": "Send Email through GMail",
+                "description": "Set the Email",
+                "properties": {
+                   "query": {
+                    "kind": "parameter",
+                    "displayName": "Query",
+                    "group": "producer",
+                    "label": "producer",
+                    "required": false,
+                    "type": "textarea",
+                    "javaType": "java.lang.String",
+                    "deprecated": false,
+                    "secret": false,
+                    "labelHint": "The text to use"
+                  },
+                  "labels": {
+                    "kind": "parameter",
+                    "displayName": "labels",
+                    "group": "producer",
+                    "label": "producer",
+                    "required": false,
+                    "type": "string",
+                    "javaType": "java.lang.String",
+                    "deprecated": false,
+                    "secret": false,
+                    "labelHint": "The to to use"
+                  },
+                  "maxResults": {
+                    "kind": "parameter",
+                    "displayName": "Max Results",
+                    "group": "producer",
+                    "label": "producer",
+                    "required": false,
+                    "type": "string",
+                    "javaType": "java.lang.String",
+                    "deprecated": false,
+                    "secret": false,
+                    "labelHint": "The cc to use"
                   }
                 }
               }
