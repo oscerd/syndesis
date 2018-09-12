@@ -51,6 +51,7 @@ public class KafkaConnectorTest extends ConnectorTestSupport {
 
     @Override
     protected List<Step> createSteps() {
+    	System.err.println(System.currentTimeMillis());
         List<Step> stepList = new ArrayList<>();
         Map<String, String> options = new HashMap<>();
         options.put("topic", "ciao");

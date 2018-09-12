@@ -46,6 +46,8 @@ public class GoogleCalendarSendEventCustomizer implements ComponentProxyCustomiz
     private String summary;
     private String calendarId;
     private String attendees;
+    private Date startDate;
+    private Date endDate;
 
 
     @Override
@@ -59,6 +61,8 @@ public class GoogleCalendarSendEventCustomizer implements ComponentProxyCustomiz
         summary = (String) options.get("summary");
         calendarId = "primary";
         attendees = (String) options.get("attendees");
+        startDate = (Date) options.get("startTime");
+        endDate = (Date) options.get("endTime");
         options.put("apiName",
         		GoogleCalendarApiCollection.getCollection().getApiName(CalendarEventsApiMethod.class).getName());
         options.put("methodName", "insert");
@@ -81,8 +85,6 @@ public class GoogleCalendarSendEventCustomizer implements ComponentProxyCustomiz
             if (ObjectHelper.isNotEmpty(attendees)) {
                 event.setAttendees(getAttendeesList(attendees));
             }
-            Date startDate = new Date();
-            Date endDate = new Date(startDate.getTime() + 3600000);
             DateTime start = new DateTime(startDate, TimeZone.getTimeZone("UTC"));
             event.setStart(new EventDateTime().setDateTime(start));
             DateTime end = new DateTime(endDate, TimeZone.getTimeZone("UTC"));

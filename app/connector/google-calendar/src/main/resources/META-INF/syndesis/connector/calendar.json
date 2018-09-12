@@ -232,6 +232,32 @@
                 "secret": false,
                 "labelHint": "The description of the calendar Event.",
                 "order": "3"
+              },
+              "startTime": {
+                "kind": "parameter",
+                "displayName": "Start date of the event",
+                "group": "producer",
+                "label": "producer",
+                "required": false,
+                "type": "date",
+                "javaType": "java.util.Date",
+                "deprecated": false,
+                "secret": false,
+                "labelHint": "Starting date of the event",
+                "order": "4"
+              },
+              "endTime": {
+                "kind": "parameter",
+                "displayName": "End date of the event",
+                "group": "producer",
+                "label": "producer",
+                "required": false,
+                "type": "date",
+                "javaType": "java.util.Date",
+                "deprecated": false,
+                "secret": false,
+                "labelHint": "Ending date of the event",
+                "order": "5"
               }
             }
           }
