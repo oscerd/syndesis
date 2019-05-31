@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.apache.camel.Component;
@@ -46,11 +47,12 @@ public final class EMailComponent extends ComponentProxyComponent implements EMa
      * this way rather than using the options map directly.
      */
     private String protocol;
-    private boolean secure;
+    private SecureType secureType;
     private String host;
     private int port = -1;
     private String username;
     private String password;
+    private String folderName;
     private String serverCertificate;
     private boolean unseenOnly;
 
@@ -65,21 +67,21 @@ public final class EMailComponent extends ComponentProxyComponent implements EMa
     public String getProtocol() {
         //
         // Will convert, for example,  imap to imaps
-        // if the protocol has been specified as secure
+        // if the secureType has been specified as SSL
         //
-        return isSecure() ? Protocol.toSecureProtocol(protocol).id() : protocol;
+        return SecureType.SSL_TLS.equals(secureType) ? Protocol.toSecureProtocol(protocol).id() : protocol;
     }
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
     }
 
-    public boolean isSecure() {
-        return secure;
+    public SecureType getSecureType() {
+        return secureType;
     }
 
-    public void setSecure(boolean secure) {
-        this.secure = secure;
+    public void setSecureType(String secureType) {
+        this.secureType = SecureType.secureTypeFromId(secureType);
     }
 
     public String getHost() {
@@ -112,6 +114,14 @@ public final class EMailComponent extends ComponentProxyComponent implements EMa
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getFolderName() {
+        return folderName;
+    }
+
+    public void setFolderName(String folderName) {
+        this.folderName = folderName;
     }
 
     public String getServerCertificate() {
@@ -153,12 +163,15 @@ public final class EMailComponent extends ComponentProxyComponent implements EMa
     private Map<String, Object> bundleOptions() {
         Map<String, Object> options = new HashMap<>();
         options.compute(PROTOCOL, value(this::getProtocol));
+        options.compute(SECURE_TYPE, value(this::getSecureType));
         options.compute(HOST, value(this::getHost));
         options.compute(PORT, value(this::getPort));
         options.compute(USER, value(this::getUsername));
         options.compute(PASSWORD, value(this::getPassword));
+        options.compute(FOLDER, value(this::getFolderName));
         options.compute(SERVER_CERTIFICATE, value(this::getServerCertificate));
         options.compute(UNSEEN_ONLY, value(this::isUnseenOnly));
+        options.compute(DELAY, value(this::getDelay));
         options.compute(MAX_MESSAGES, value(this::getMaxResults));
         return options;
     }
@@ -182,21 +195,31 @@ public final class EMailComponent extends ComponentProxyComponent implements EMa
         MailComponent component = new MailComponent(getCamelContext());
         MailConfiguration configuration = new MailConfiguration(getCamelContext());
 
-        if (getProtocol() == null) {
+        String protocol = getProtocol();
+        if (protocol == null) {
             throw new IllegalStateException("No protocol specified for email component");
         }
 
-        configuration.setProtocol(getProtocol());
+        configuration.setProtocol(protocol);
         configuration.setHost(getHost());
         configuration.setPort(getPort());
         configuration.setUsername(getUsername());
         configuration.setPassword(getPassword());
         configuration.setUnseen(isUnseenOnly());
 
+        if (getFolderName() != null) {
+            configuration.setFolderName(getFolderName());
+        }
+
         Map<String, Object> resolvedOptions = bundleOptions();
         SSLContextParameters sslContextParameters = EMailUtil.createSSLContextParameters(resolvedOptions);
         if (sslContextParameters != null) {
             configuration.setSslContextParameters(sslContextParameters);
+        } else if (SecureType.STARTTLS.equals(secureType)) {
+            Properties properties = new Properties();
+            properties.put("mail." + protocol + ".starttls.enable", "true");
+            properties.put("mail." + protocol + ".starttls.required", "true");
+            configuration.setAdditionalJavaMailProperties(properties);
         }
 
         configuration.setFetchSize(getMaxResults());

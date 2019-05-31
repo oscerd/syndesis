@@ -53,8 +53,8 @@ public class SqlConnectorTest extends SqlConnectorTestSupport {
         try {
             dbProductName = db.connection.getMetaData().getDatabaseProductName();
         } catch (SQLException e) {
-            Assert.assertFalse(true);
             e.printStackTrace();
+            Assert.fail(e.getMessage());
         }
         if (DbEnum.POSTGRESQL.equals(DbEnum.fromName(dbProductName))) {
             return Collections.singletonList("CREATE TABLE ADDRESS ("
@@ -106,10 +106,12 @@ public class SqlConnectorTest extends SqlConnectorTestSupport {
         parameters.put("street", "LaborInVain");
 
         return Arrays.asList(new Object[][] {
-                { "INSERT INTO ADDRESS (street, number) VALUES ('East Davie Street', 100)", Arrays.asList(
-                        Collections.singletonMap("ID", new String[] { "1" })), Collections.emptyMap()},
-                { "INSERT INTO ADDRESS (street, number) VALUES (:#street, :#number)", Arrays.asList(
-                        Collections.singletonMap("ID", new String[] { "1" })), parameters}
+                { "INSERT INTO ADDRESS (street, number) VALUES ('East Davie Street', 100)",
+                        Collections.singletonList(Collections.singletonMap("ID", new String[]{"1"})),
+                        Collections.emptyMap()},
+                { "INSERT INTO ADDRESS (street, number) VALUES (:#street, :#number)",
+                        Collections.singletonList(Collections.singletonMap("ID", new String[]{"1"})),
+                        parameters}
         });
     }
 

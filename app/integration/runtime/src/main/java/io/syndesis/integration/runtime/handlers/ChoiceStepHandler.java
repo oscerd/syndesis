@@ -27,10 +27,13 @@ import io.syndesis.common.model.integration.StepKind;
 import io.syndesis.common.util.Json;
 import io.syndesis.integration.runtime.IntegrationRouteBuilder;
 import io.syndesis.integration.runtime.IntegrationStepHandler;
+import io.syndesis.integration.runtime.logging.ActivityTracker;
+import io.syndesis.integration.runtime.logging.IntegrationLoggingConstants;
 import io.syndesis.integration.runtime.util.JsonSimplePredicate;
 import org.apache.camel.CamelContext;
-import org.apache.camel.LoggingLevel;
+import org.apache.camel.Exchange;
 import org.apache.camel.Predicate;
+import org.apache.camel.Processor;
 import org.apache.camel.model.ChoiceDefinition;
 import org.apache.camel.model.ProcessorDefinition;
 import org.apache.camel.util.ObjectHelper;
@@ -56,21 +59,15 @@ public class ChoiceStepHandler implements IntegrationStepHandler {
 
             for (FlowOption flowOption : flows) {
                 choice.when(getPredicate(flowOption.getConditionExpression(), builder.getContext()))
+                        .process(new EnrichActivityIdHeader())
                         .to(getEndpointUri(routingScheme, flowOption.getFlow()))
                         .end();
             }
 
             if (ObjectHelper.isNotEmpty(defaultFlow)) {
                 choice.otherwise()
+                        .process(new EnrichActivityIdHeader())
                         .to(getEndpointUri(routingScheme, defaultFlow))
-                        .end();
-            } else if (step.getId().isPresent()) {
-                choice.otherwise()
-                        .log(LoggingLevel.INFO, (String) null, step.getId().get(), getNoContentBasedRouteLogMessage())
-                        .end();
-            } else {
-                choice.otherwise()
-                        .log(LoggingLevel.INFO, getNoContentBasedRouteLogMessage())
                         .end();
             }
 
@@ -82,10 +79,6 @@ public class ChoiceStepHandler implements IntegrationStepHandler {
 
     private Predicate getPredicate(String conditionExpression, CamelContext context) {
         return new JsonSimplePredicate(conditionExpression, context);
-    }
-
-    private String getNoContentBasedRouteLogMessage() {
-        return "Message Context: [${in.headers}] Body: [${bean:bodyLogger}] No content based route for message";
     }
 
     // *******************************
@@ -113,6 +106,16 @@ public class ChoiceStepHandler implements IntegrationStepHandler {
             return Json.reader().forType(new TypeReference<List<FlowOption>>(){}).readValue(flowMappings);
         } catch (IOException e) {
             throw new IllegalStateException(String.format("Failed to read flow mappings %s: %s", flowMappings, e.getMessage()),e);
+        }
+    }
+
+    private static class EnrichActivityIdHeader implements Processor {
+        @Override
+        public void process(Exchange exchange) {
+            String activityId = ActivityTracker.getActivityId(exchange);
+            if (ObjectHelper.isNotEmpty(activityId)) {
+                exchange.getIn().setHeader(IntegrationLoggingConstants.ACTIVITY_ID, activityId);
+            }
         }
     }
 }

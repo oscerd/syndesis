@@ -7,6 +7,9 @@ check_oc_version()
 {
     local minimum=${OC_MIN_VERSION}
     local test=$(oc version | grep "^oc" | tr -d oc\ v | cut -f1 -d "+")
+    if [ "$test" = "" ]; then
+        local test=$(oc version | grep 'Client Version' | sed "s/^.*GitVersion:\"v\(.*\)\", GitCommit.*$/\1/")
+    fi
 
     echo $(compare_oc_version $test $minimum)
 }
@@ -269,6 +272,16 @@ rules:
   - grafanadashboards
   verbs:
   - "*"
+- apiGroups:
+    - serving.knative.dev
+  resources:
+    - services
+  verbs: [ get, list, watch ]
+- apiGroups:
+    - eventing.knative.dev
+  resources:
+    - channels
+  verbs: [ get, list, watch ]
 ---
 EOT
         if [ $? -ne 0 ]; then
@@ -487,7 +500,7 @@ patch_for_using_template_from_configmap() {
               "name": "syndesis-operator",
               "command": [
                 "syndesis-operator",
-                "-template",
+                "--template",
                 "/conf/syndesis-template.yml"
               ],
               "volumeMounts": [

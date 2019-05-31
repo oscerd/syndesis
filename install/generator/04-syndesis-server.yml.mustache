@@ -183,7 +183,6 @@
   data:
     prometheus-config.yml: |-
 {{{PrometheusRules}}}
-
 - apiVersion: v1
   kind: ConfigMap
   metadata:
@@ -239,6 +238,8 @@
           enabled: true
         public-api:
           enabled: true
+        knative:
+          enabled: false
 {{#Productized}}
       maven:
         repositories:
@@ -292,5 +293,41 @@
   roleRef:
     kind: Role
     name: camel-k
+    apiGroup: rbac.authorization.k8s.io
+- kind: Role
+  apiVersion: rbac.authorization.k8s.io/v1beta1
+  metadata:
+    name: syndesis-knative-reader
+    labels:
+      app: syndesis
+      syndesis.io/app: syndesis
+      syndesis.io/type: infrastructure
+      syndesis.io/component: syndesis-server
+  rules:
+  - apiGroups:
+      - serving.knative.dev
+    resources:
+      - services
+    verbs: [ get, list, watch]
+  - apiGroups:
+      - eventing.knative.dev
+    resources:
+      - channels
+    verbs: [ get, list, watch]
+- kind: RoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1beta1
+  metadata:
+    name: syndesis-knative-reader
+    labels:
+      app: syndesis
+      syndesis.io/app: syndesis
+      syndesis.io/type: infrastructure
+      syndesis.io/component: syndesis-server
+  subjects:
+  - kind: ServiceAccount
+    name: syndesis-server
+  roleRef:
+    kind: Role
+    name: syndesis-knative-reader
     apiGroup: rbac.authorization.k8s.io
 # END:CAMEL-K

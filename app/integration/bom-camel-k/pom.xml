@@ -27,11 +27,12 @@
   <packaging>pom</packaging>
 
   <properties>
-    <camel.version>2.21.0.fuse-740010</camel.version>
+    <camel.version>2.21.0.fuse-740013</camel.version>
     <atlasmap.version>1.39.5</atlasmap.version>
     <jackson.version>2.8.11</jackson.version>
     <jackson.databind.version>2.8.11.3</jackson.databind.version>
     <jackson-module-jaxb-annotations.version>2.8.11</jackson-module-jaxb-annotations.version>
+    <validation-api.version>2.0.1.Final</validation-api.version>
   </properties>
 
     <!-- Metadata need to publish to central -->
@@ -67,6 +68,7 @@
   <distributionManagement>
     <snapshotRepository>
       <id>oss-sonatype-staging</id>
+      <name>oss-sonatype-staging</name>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
     <repository>
@@ -145,6 +147,11 @@
         <groupId>com.fasterxml.jackson.module</groupId>
         <artifactId>jackson-module-jsonSchema</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>javax.validation</groupId>
+        <artifactId>validation-api</artifactId>
+        <version>${validation-api.version}</version>
       </dependency>
 
       <!-- common -->
@@ -362,6 +369,11 @@
       <dependency>
         <groupId>io.syndesis.connector</groupId>
         <artifactId>connector-email</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.syndesis.connector</groupId>
+        <artifactId>connector-knative</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>

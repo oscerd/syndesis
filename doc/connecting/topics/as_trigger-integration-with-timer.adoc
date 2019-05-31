@@ -1,6 +1,6 @@
 // This assembly is included in the following assemblies:
-// Upstream: connecting/master.adoc  
-// Downstream: connecting-fuse-online-to-applications-and-services/master.adoc
+// Upstream: integrating/topics/as_creating-integrations.adoc
+// Downstream: integrating-applications-with-fuse-online/assemblies/syndesis-integrating-applications/as_creating-integrations.adoc
 
 [id='triggering-integrations-with-timers_{context}']
 = Triggering integration execution with a timer
@@ -20,4 +20,4 @@ include::p_add-timer-connection.adoc[leveloffset=+1]
 
 include::p_create-timer-connection.adoc[leveloffset=+1]
 
-:context: connectors
+:context: create

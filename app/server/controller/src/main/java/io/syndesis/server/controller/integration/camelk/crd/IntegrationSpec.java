@@ -37,7 +37,7 @@ public interface IntegrationSpec {
 //        Context            string                          `json:"context,omitempty"`
 //        Dependencies       []string                        `json:"dependencies,omitempty"`
 //        Profile            TraitProfile                    `json:"profile,omitempty"`
-//        Traits             map[string]IntegrationTraitSpec `json:"traits,omitempty"`
+//        Traits             map[string]TraitSpec            `json:"traits,omitempty"`
 //        Configuration      []ConfigurationSpec             `json:"configuration,omitempty"`
 //        Repositories       []string                        `json:"repositories,omitempty"`
 //        ServiceAccountName string                          `json:"serviceAccountName,omitempty"`
@@ -65,7 +65,7 @@ public interface IntegrationSpec {
     String getProfile();
 
     @Value.Default
-    default Map<String,IntegrationTraitSpec> getTraits() {
+    default Map<String, TraitSpec> getTraits() {
         return Collections.emptyMap();
     }
 
@@ -83,5 +83,13 @@ public interface IntegrationSpec {
     String getServiceAccountName();
 
     class Builder extends ImmutableIntegrationSpec.Builder {
+         public Builder addConfiguration(String type, String value) {
+             return addConfiguration(
+                 new ConfigurationSpec.Builder()
+                     .type(type)
+                    .value(value)
+                    .build()
+             );
+         }
     }
 }

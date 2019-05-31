@@ -35,6 +35,7 @@ import io.syndesis.integration.runtime.logging.ActivityTrackingInterceptStrategy
 import io.syndesis.integration.runtime.logging.IntegrationLoggingListener;
 import io.syndesis.integration.runtime.util.JsonSupport;
 import org.apache.camel.CamelContext;
+import org.apache.camel.Exchange;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
@@ -60,11 +61,21 @@ import static org.mockito.Mockito.verify;
 public class FilterStepHandlerTest extends IntegrationTestSupport {
     private static final Logger LOGGER = LoggerFactory.getLogger(FilterStepHandlerTest.class);
 
+    private static final String START_STEP = "start-step";
+    private static final String FILTER_STEP = "filter-step";
+    private static final String MOCK_STEP = "mock-step";
+
     private ActivityTracker activityTracker = Mockito.mock(ActivityTracker.class);
 
     @Before
     public void setupMocks() {
         reset(activityTracker);
+
+        doAnswer(invocation -> {
+            ActivityTracker.initializeTracking(invocation.getArgument(0));
+            return null;
+        }).when(activityTracker).startTracking(any(Exchange.class));
+
         doAnswer(invocation -> {
             LOGGER.debug(JsonSupport.toJsonObject(invocation.getArguments()));
             return null;
@@ -78,6 +89,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                 new Step.Builder()
+                    .id(START_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -87,10 +99,12 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                         .build())
                     .build(),
                 new Step.Builder()
+                    .id(FILTER_STEP)
                     .stepKind(StepKind.expressionFilter)
                     .putConfiguredProperty("filter", "${body} contains 'number'")
                     .build(),
                 new Step.Builder()
+                    .id(MOCK_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -128,9 +142,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(3)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -143,6 +158,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                     new Step.Builder()
+                            .id(START_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -152,10 +168,12 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                                     .build())
                             .build(),
                     new Step.Builder()
+                            .id(FILTER_STEP)
                             .stepKind(StepKind.expressionFilter)
                             .putConfiguredProperty("filter", "${body.name} == 'James'")
                             .build(),
                     new Step.Builder()
+                            .id(MOCK_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -193,9 +211,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(3)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -208,6 +227,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                     new Step.Builder()
+                            .id(START_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -217,10 +237,12 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                                     .build())
                             .build(),
                     new Step.Builder()
+                            .id(FILTER_STEP)
                             .stepKind(StepKind.expressionFilter)
                             .putConfiguredProperty("filter", "${body.size()} > 0 && ${body[0].name} == 'James'")
                             .build(),
                     new Step.Builder()
+                            .id(MOCK_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -259,9 +281,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(4)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -289,6 +312,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                 new Step.Builder()
+                    .id(START_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -298,12 +322,14 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                         .build())
                     .build(),
                 new Step.Builder()
+                    .id(FILTER_STEP)
                     .stepKind(StepKind.ruleFilter)
                     .putConfiguredProperty("type", "rule")
                     .putConfiguredProperty("predicate", "OR")
                     .putConfiguredProperty("rules", "[{\"path\":\"name\",\"op\":\"==\",\"value\":\"James\"}, {\"path\":\"name\",\"op\":\"==\",\"value\":\"Roland\"}]")
                     .build(),
                 new Step.Builder()
+                    .id(MOCK_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -341,9 +367,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(5)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -356,6 +383,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                 new Step.Builder()
+                    .id(START_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -365,12 +393,14 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                         .build())
                     .build(),
                 new Step.Builder()
+                    .id(FILTER_STEP)
                     .stepKind(StepKind.ruleFilter)
                     .putConfiguredProperty("type", "rule")
                     .putConfiguredProperty("predicate", "OR")
                     .putConfiguredProperty("rules", "[{\"path\":\"user.name\",\"op\":\"==\",\"value\":\"James\"}, {\"path\":\"user.name\",\"op\":\"==\",\"value\":\"Roland\"}]")
                     .build(),
                 new Step.Builder()
+                    .id(MOCK_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -408,9 +438,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(5)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -423,6 +454,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                     new Step.Builder()
+                            .id(START_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -432,12 +464,14 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                                     .build())
                             .build(),
                     new Step.Builder()
+                            .id(FILTER_STEP)
                             .stepKind(StepKind.ruleFilter)
                             .putConfiguredProperty("type", "rule")
                             .putConfiguredProperty("predicate", "AND")
                             .putConfiguredProperty("rules", "[{\"path\":\"size()\",\"op\":\"==\",\"value\":\"2\"}, {\"path\":\"[0].user.name\",\"op\":\"==\",\"value\":\"James\"}, {\"path\":\"[1].user.name\",\"op\":\"==\",\"value\":\"Roland\"}]")
                             .build(),
                     new Step.Builder()
+                            .id(MOCK_STEP)
                             .stepKind(StepKind.endpoint)
                             .action(new ConnectorAction.Builder()
                                     .descriptor(new ConnectorDescriptor.Builder()
@@ -478,9 +512,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(6)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -493,6 +528,7 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
         try {
             final RouteBuilder routes = newIntegrationRouteBuilder(activityTracker,
                 new Step.Builder()
+                    .id(START_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -502,12 +538,14 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
                         .build())
                     .build(),
                 new Step.Builder()
+                    .id(FILTER_STEP)
                     .stepKind(StepKind.ruleFilter)
                     .putConfiguredProperty("type", "rule")
                     .putConfiguredProperty("predicate", "OR")
                     .putConfiguredProperty("rules", "[{\"path\":\"name\",\"op\":\"==\",\"value\":\"James\"}, {\"path\":\"name\",\"op\":\"==\",\"value\":\"Roland\"}]")
                     .build(),
                 new Step.Builder()
+                    .id(MOCK_STEP)
                     .stepKind(StepKind.endpoint)
                     .action(new ConnectorAction.Builder()
                         .descriptor(new ConnectorDescriptor.Builder()
@@ -545,9 +583,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
             result.assertIsSatisfied();
 
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("begin"));
-            verify(activityTracker, times(5)).track(eq("exchange"), anyString(), eq("step"), anyString(), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
-            verify(activityTracker, times(allMessages.size())).track(eq("exchange"), anyString(), eq("status"), eq("done"), eq("failed"), eq(false));
+            verify(activityTracker, times(allMessages.size())).startTracking(any(Exchange.class));
+            verifyActivityStepTracking(MOCK_STEP, matchingMessages.size());
+            verifyActivityStepTracking(FILTER_STEP, allMessages.size());
+            verify(activityTracker, times(allMessages.size())).finishTracking(any(Exchange.class));
         } finally {
             context.stop();
         }
@@ -571,6 +610,10 @@ public class FilterStepHandlerTest extends IntegrationTestSupport {
 
     private String buildUserJsonArray(String ... names) {
         return "[" + buildUserJson(names) + "]";
+    }
+
+    private void verifyActivityStepTracking(String stepId, int times) {
+        verify(activityTracker, times(times)).track(eq("exchange"), anyString(), eq("step"), eq(stepId), eq("id"), anyString(), eq("duration"), anyLong(), eq("failure"), isNull());
     }
 
     // ***************************

@@ -37,7 +37,7 @@
     <syndesis.version>${project.version}</syndesis.version>
 
     <!-- Atlasmap version -->
-    <atlasmap.version>1.39.6</atlasmap.version>
+    <atlasmap.version>1.40.0-alpha2</atlasmap.version>
 
     <!-- Image names -->
     <image.s2i>syndesis/syndesis-s2i:%l</image.s2i>
@@ -54,7 +54,7 @@
 
     <hibernate.validator.version>6.0.16.Final</hibernate.validator.version>
 
-    <jackson.version>2.9.8</jackson.version>
+    <jackson.version>2.9.9</jackson.version>
     <json-patch.version>1.9</json-patch.version>
     <kubernetes.client.version>3.1.12.fuse-730022</kubernetes.client.version>
 
@@ -75,8 +75,8 @@
     <commons.compress.version>1.18</commons.compress.version>
 
     <!-- Global camel version used everywhere -->
-    <camel.version>2.21.0.fuse-740010</camel.version>
-    <camel-k-runtime.version>0.3.1</camel-k-runtime.version>
+    <camel.version>2.21.0.fuse-740013</camel.version>
+    <camel-k-runtime.version>0.3.3.fuse-740002</camel-k-runtime.version>
 
     <!-- Don't fork based on cores, doesn't work nicely in the cloud -->
     <basepom.test.fork-count>1</basepom.test.fork-count>
@@ -109,7 +109,7 @@
     <powermock.version>2.0.0</powermock.version>
     <testcontainers.version>1.10.6</testcontainers.version>
 
-    <spring-security.version>4.2.6.RELEASE</spring-security.version>
+    <spring-security.version>4.2.12.RELEASE</spring-security.version>
     <resteasy.version>3.6.1.Final</resteasy.version>
     <resteasy-spring-boot-starter.version>1.0.1.Final</resteasy-spring-boot-starter.version>
 
@@ -129,7 +129,8 @@
     <module>server</module>
     <module>s2i</module>
     <module>meta</module>
-    <module>ui</module>
+    <module>ui-angular</module>
+    <module>ui-react</module>
     <module>../doc</module>
   </modules>
 
@@ -153,7 +154,8 @@
       <modules>
         <module>server</module>
         <module>meta</module>
-        <module>ui</module>
+        <module>ui-angular</module>
+        <module>ui-react</module>
       </modules>
 
       <build>
@@ -632,7 +634,11 @@
               <exclude>**/s2i/src/main/docker/project/**</exclude>
               <exclude>**/Dockerfile</exclude>
               <exclude>**/*.ts</exclude>
+              <exclude>**/*.tsx</exclude>
+              <exclude>**/*.css</exclude>
               <exclude>**/*.scss</exclude>
+              <exclude>**/setupProxy.js</exclude>
+              <exclude>**/ui-react/packages/**</exclude>
               <exclude>**/*.html</exclude>
               <exclude>**/config.json*</exclude>
               <exclude>**/.gitkeep</exclude>
@@ -1478,6 +1484,12 @@
 
       <dependency>
         <groupId>io.syndesis.connector</groupId>
+        <artifactId>connector-knative</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.syndesis.connector</groupId>
         <artifactId>connector-flow</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -1714,6 +1726,13 @@
         <groupId>com.fasterxml.jackson.module</groupId>
         <artifactId>jackson-module-jsonSchema</artifactId>
         <version>${jackson.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.codehaus.woodstox</groupId>
+        <artifactId>stax2-api</artifactId>
+        <version>4.1</version>
+        <scope>provided</scope>
       </dependency>
 
       <dependency>
@@ -2333,6 +2352,7 @@
   <distributionManagement>
     <snapshotRepository>
       <id>oss-sonatype-staging</id>
+      <name>oss-sonatype-staging</name>
       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </snapshotRepository>
     <repository>

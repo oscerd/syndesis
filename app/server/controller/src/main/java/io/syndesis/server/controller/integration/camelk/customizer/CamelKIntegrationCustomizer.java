@@ -15,16 +15,16 @@
  */
 package io.syndesis.server.controller.integration.camelk.customizer;
 
-import io.fabric8.kubernetes.api.model.Secret;
+import java.util.EnumSet;
+
 import io.syndesis.common.model.integration.IntegrationDeployment;
 import io.syndesis.server.controller.integration.camelk.crd.Integration;
+import io.syndesis.server.openshift.Exposure;
 
 /**
  * Used to customize the Camel K integration resource.
  */
 @FunctionalInterface
 public interface CamelKIntegrationCustomizer {
-
-    Integration customize(IntegrationDeployment deployment, Integration integration, Secret secret);
-
+    Integration customize(IntegrationDeployment deployment, Integration integration, EnumSet<Exposure> exposure);
 }
