@@ -4,20 +4,35 @@
 @import url('~patternfly-react/dist/css/patternfly-react.css');
 
 /* pf4 base styles */
-@import url('~@patternfly/react-core/dist/styles/base.css');
+/* @import url('~@patternfly/react-core/dist/styles/base.css'); */
+@import url('~@patternfly/patternfly/patternfly-variables.css');
+@import url('~@patternfly/patternfly/patternfly-shield-noninheritable.css');
+@import url('~@patternfly/patternfly/patternfly-common.css');
+@import url('~@patternfly/patternfly/patternfly-globals.css');
 @import url('~@patternfly/patternfly/utilities/Spacing/spacing.css');
 @import url('~@patternfly/patternfly/layouts/Level/level.css');
 @import url('~@patternfly/patternfly/layouts/Split/split.css');
+@import url('~@patternfly/patternfly/utilities/Display/display.css');
 
 :root {
+  --pf-global--FontSize--md: var(--pf-global--FontSize--sm);
   --pf-global--link--Color: #0088ce;
   --pf-c-nav__list-link--m-current--after--BackgroundColor: #0088ce;
   --pf-global--link--Color--hover: #00659c;
   --pf-c-backdrop--Color: rgba(3,3,3,.62);
 }
 
-.pf-c-dropdown {
-  --pf-c-dropdown__toggle--FontSize: var(--pf-global--FontSize--xs);
+.pf-c-page__header-brand-link .pf-c-brand {
+  --pf-c-page__header-brand-link--c-brand--MaxHeight: 40px;
+  height: 40px;
+}
+
+.pf-c-dropdown__toggle {
+  --pf-c-dropdown__toggle--FontSize: var(--pf-global--FontSize--sm);
+}
+
+.pf-c-dropdown__toggle.syn-help-dropdown {
+  --pf-c-dropdown__toggle--FontSize: var(--pf-global--FontSize--md);
 }
 
 .pf-c-page {
@@ -30,12 +45,13 @@
 }
 
 body {
-  font-size: var(--pf-global--FontSize--sm);
   line-height: var(--pf-global--LineHeight--sm);
   color: var(--pf-global--Color--100);
 }
 
 #root {
+  flex: 1;
+  display: flex;
   height: 100%;
 }
 
@@ -57,7 +73,7 @@ body {
 }
 
 .label {
-  font-size: var(--pf-global--FontSize--xs);
+  font-size: var(--pf-global--FontSize--sm);
 }
 
 .syn-scrollable {
@@ -84,10 +100,6 @@ body {
   --pf-c-content--dt--FontWeight: bold; /* override for OpenSans not supporting weight 500 */
 }
 
-.pf-c-dropdown__toggle.syn-help-dropdown {
-  --pf-c-dropdown__toggle--FontSize: var(--pf-global--FontSize--md);
-}
-
 .list-view-pf-view {
   margin-top: 0;
 }
@@ -104,27 +116,19 @@ body {
 
 .pf-c-clipboard-copy {
   display: inline-block;
-  min-width: 455px;
+  width: 455px;
+  max-width: 100%;
 }
 
 @media (max-width: 768px) {
   .pf-c-clipboard-copy {
     display: inline-block;
-    --pf-global--spacer--md: 0;
   }
-}
 
-.dashboard__metrics .card-pf.card-pf-aggregate-status {
-  padding: 0 10px 24px 10px;
-}
-
-.dashboard__metrics .card-pf-title .card-pf-aggregate-status-count {
-  font-size: 14px;
-}
-
-.dashboard__metrics .metrics-uptime {
-  font-size: 24px;
-  font-weight: 300;
+  .pf-c-clipboard-copy__group-copy {
+    --pf-c-clipboard-copy__group-copy--PaddingLeft: 16px;
+    --pf-c-clipboard-copy__group-copy--PaddingRight: 16px;
+  }
 }
 
 .customization-details__heading {
@@ -133,4 +137,46 @@ body {
   margin-bottom: 8px;
   margin-top: 8px;
   padding: 4px 8px;
+}
+
+/* Wizard overrides */
+.wizard-pf-steps-indicator,
+.wizard-pf-steps {
+  background: #fff;
+}
+
+.wizard-pf-step-alt .wizard-pf-step-alt-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .wizard-pf-steps-indicator {
+    height: auto;
+    padding-bottom: calc(1em + 25px);
+  }
+}
+
+@media (min-width: 768px) {
+  .wizard-pf-steps-indicator .wizard-pf-step .wizard-pf-step-number {
+    top: 100%;
+    left: 50%;
+    transform: translate(-50%, .5em);
+  }
+}
+
+.wizard-pf-steps-indicator .wizard-pf-step:before {
+  top: calc(100% + .5em + calc(25px / 2));
+  transform: translateY(-100%);
+}
+
+.wizard-pf-step-title {
+  line-height: 24px;
+}
+
+.list-view-pf .list-group-item-heading {
+  white-space: normal;
+  word-break: break-word;
 }

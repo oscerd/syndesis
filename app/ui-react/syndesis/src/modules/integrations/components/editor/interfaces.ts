@@ -30,7 +30,6 @@ export enum DataShapeDirection {
 export interface IUIStep extends StepKind {
   board?: ConnectionBulletinBoard;
   connector?: Connector;
-  icon: string;
   uiStepKind: 'api-provider' | StepKind['stepKind'];
   title: string;
   metadata: { [key: string]: any };
@@ -41,8 +40,10 @@ export interface IUIStep extends StepKind {
 export interface IUIIntegrationStep extends IUIStep {
   shape: string | undefined;
   previousStepShouldDefineDataShape: boolean;
+  previousStepShouldDefineDataShapePosition?: number;
   shouldAddDataMapper: boolean;
   isUnclosedSplit: boolean;
+  restrictedDelete: boolean;
 }
 
 /*********************************/
@@ -96,7 +97,7 @@ export interface IConfigureStepRouteState extends IBaseRouteState {
 export interface IConfigureActionRouteParams extends IBaseFlowRouteParams {
   position: string;
   actionId: string;
-  step: string;
+  page: string;
 }
 
 /**
@@ -172,6 +173,8 @@ export interface IDataMapperRouteParams extends IConfigureStepRouteParams {}
 export interface IDataMapperRouteState extends IConfigureStepRouteState {}
 export interface IRuleFilterStepRouteParams extends IConfigureStepRouteParams {}
 export interface IRuleFilterStepRouteState extends IConfigureStepRouteState {}
+export interface IChoiceStepRouteParams extends IConfigureStepRouteParams {}
+export interface IChoiceStepRouteState extends IConfigureStepRouteState {}
 export interface ISelectConnectionRouteState extends IBaseRouteState {}
 export interface IPostPublishRouteParams extends IBaseRouteParams {}
 export interface ISaveIntegrationRouteParams extends IBaseRouteParams {}
@@ -192,6 +195,8 @@ export const stepRoutes = {
   dataMapper: 'mapper',
   // if selected step kind is basic filter
   basicFilter: 'filter',
+  // if selected step kind is choice
+  choice: 'choice',
   // if selected step kind is template
   template: 'template',
   // if selected step kind is step
@@ -201,7 +206,7 @@ export const stepRoutes = {
   // if selected step kind is endpoint
   connection: include('connection/:connectionId', {
     selectAction: '',
-    configureAction: ':actionId/:step',
+    configureAction: ':actionId/:page',
     // if 'any' data shape
     describeData: 'describe-data/:position/:direction',
   }),

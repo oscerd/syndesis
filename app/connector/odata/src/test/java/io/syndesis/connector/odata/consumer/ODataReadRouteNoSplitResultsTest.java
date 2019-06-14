@@ -219,12 +219,14 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         context.addRoutes(routes);
         MockEndpoint result = initMockEndpoint();
         result.setMinimumExpectedMessageCount(1);
-        result.setResultWaitTime(360000);
 
         context.start();
 
         result.assertIsSatisfied();
-        testListResult(result, 0, REF_SERVER_PEOPLE_DATA_KLAX);
+        //
+        // Return singleton json object rather than list due to key predicate
+        //
+        testResult(result, 0, REF_SERVER_PEOPLE_DATA_KLAX);
     }
 
     @Test
@@ -249,7 +251,10 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         context.start();
 
         result.assertIsSatisfied();
-        testListResult(result, 0, REF_SERVER_PEOPLE_DATA_KLAX_LOC);
+        //
+        // Return singleton json object rather than list due to key predicate
+        //
+        testResult(result, 0, REF_SERVER_PEOPLE_DATA_KLAX_LOC);
     }
 
     @Test
@@ -328,6 +333,13 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         testListResult(result, 0, TEST_SERVER_DATA_2, TEST_SERVER_DATA_1);
     }
 
+    /**
+     * Despite split being set to false, the existence of a key predicate
+     * forces the split since a predicate demands only 1 result which is
+     * pointless putting into an array.
+     *
+     * @throws Exception
+     */
     @Test
     public void testODataRouteWithKeyPredicate() throws Exception {
         String keyPredicate = "1";
@@ -346,9 +358,20 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         context.start();
 
         result.assertIsSatisfied();
-        testListResult(result, 0, TEST_SERVER_DATA_1);
+
+        //
+        // We expect the result object to be a single json object & not an array
+        //
+        testResult(result, 0, TEST_SERVER_DATA_1);
     }
 
+    /**
+     * Despite split being set to false, the existence of a key predicate
+     * forces the split since a predicate demands only 1 result which is
+     * pointless putting into an array.
+     *
+     * @throws Exception
+     */
     @Test
     public void testODataRouteWithKeyPredicateWithBrackets() throws Exception {
         String keyPredicate = "(1)";
@@ -367,7 +390,10 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         context.start();
 
         result.assertIsSatisfied();
-        testListResult(result, 0, TEST_SERVER_DATA_1);
+        //
+        // We expect the result object to be a single json object & not an array
+        //
+        testResult(result, 0, TEST_SERVER_DATA_1);
     }
 
     @Test
@@ -434,6 +460,71 @@ public class ODataReadRouteNoSplitResultsTest extends AbstractODataReadRouteTest
         JSONAssert.assertEquals(expected, json.get(1), JSONCompareMode.LENIENT);
         expected = testData(TEST_SERVER_DATA_3);
         JSONAssert.assertEquals(expected, json.get(2), JSONCompareMode.LENIENT);
+
+        //
+        // Check backup consumer options carried through to olingo4 component
+        //
+        Olingo4Endpoint olingo4Endpoint = context.getEndpoint(OLINGO4_READ_ENDPOINT, Olingo4Endpoint.class);
+        assertNotNull(olingo4Endpoint);
+        Map<String, Object> consumerProperties = olingo4Endpoint.getConsumerProperties();
+        assertNotNull(consumerProperties);
+        assertTrue(consumerProperties.size() > 0);
+        assertEquals(backoffIdleThreshold, consumerProperties.get(BACKOFF_IDLE_THRESHOLD));
+        assertEquals(backoffMultiplier, consumerProperties.get(BACKOFF_MULTIPLIER));
+    }
+
+    /**
+     * Despite split being set to false, the existence of a key predicate
+     * forces the split since a predicate demands only 1 result which is
+     * pointless putting into an array.
+     *
+     * @throws Exception
+     */
+    @SuppressWarnings( "unchecked" )
+    @Test
+    public void testReferenceODataRouteAlreadySeenWithKeyPredicate() throws Exception {
+        String resourcePath = "Airports";
+        String keyPredicate = "KSFO";
+        String backoffIdleThreshold = "1";
+        String backoffMultiplier = "1";
+
+        Connector odataConnector = createODataConnector(new PropertyBuilder<String>()
+                                                            .property(SERVICE_URI, REF_SERVICE_URI)
+                                                            .property(KEY_PREDICATE, keyPredicate)
+                                                            .property(FILTER_ALREADY_SEEN, Boolean.TRUE.toString())
+                                                            .property(BACKOFF_IDLE_THRESHOLD, backoffIdleThreshold)
+                                                            .property(BACKOFF_MULTIPLIER, backoffMultiplier));
+
+        Step odataStep = createODataStep(odataConnector, resourcePath);
+        Integration odataIntegration = createIntegration(odataStep, mockStep);
+
+        RouteBuilder routes = newIntegrationRouteBuilder(odataIntegration);
+        context.addRoutes(routes);
+
+        int expectedMsgCount = 3;
+        MockEndpoint result = initMockEndpoint();
+        result.setMinimumExpectedMessageCount(expectedMsgCount);
+
+        context.start();
+
+        result.assertIsSatisfied();
+
+        for (int i = 0; i < expectedMsgCount; ++i) {
+            String json = extractJsonFromExchgMsg(result, i, String.class);
+            assertNotNull(json);
+
+            String expected;
+            if (i == 0) {
+                expected = testData(REF_SERVER_AIRPORT_DATA_1);
+                JSONAssert.assertEquals(expected, json, JSONCompareMode.LENIENT);
+            } else {
+                //
+                // Subsequent polling messages should be empty
+                //
+                expected = testData(TEST_SERVER_DATA_EMPTY);
+                JSONAssert.assertEquals(expected, json, JSONCompareMode.LENIENT);
+            }
+        }
 
         //
         // Check backup consumer options carried through to olingo4 component

@@ -4,14 +4,19 @@ import {
   DropdownItem,
   DropdownPosition,
   DropdownToggle,
+  KebabToggle,
 } from '@patternfly/react-core';
 import { HelpIcon } from '@patternfly/react-icons';
 import classNames from 'classnames';
 import * as React from 'react';
 
 export interface IHelpDropdownProps {
+  additionalDropdownItems?: React.ReactNode[];
   className?: string;
+  isTabletView: boolean;
   isOpen: boolean;
+  dropdownDirection?: keyof typeof DropdownDirection;
+  dropdownPosition?: keyof typeof DropdownPosition;
   launchAboutModal: () => void;
   launchSupportPage: () => void;
   launchSampleIntegrationTutorials: () => void;
@@ -51,12 +56,16 @@ export class HelpDropdown extends React.Component<
   public render() {
     const { isOpen } = this.state;
     const {
+      additionalDropdownItems = [],
+      dropdownDirection,
+      dropdownPosition,
       launchSampleIntegrationTutorials,
       launchUserGuide,
       launchConnectorsGuide,
       launchSupportPage,
       launchContactUs,
       launchAboutModal,
+      isTabletView,
     } = this.props;
     const dropdownItems = [
       <DropdownItem
@@ -103,30 +112,44 @@ export class HelpDropdown extends React.Component<
         data-testid={'help-dropdown-about-dropdown-item'}
         key="action"
         component="a"
-        onClick={launchAboutModal}
+        onClick={ev => {
+          ev.preventDefault();
+          launchAboutModal();
+        }}
       >
         About
       </DropdownItem>,
     ];
+    const dropdownId = 'helpDropdownButton';
     return (
       <>
         <Dropdown
-          direction={DropdownDirection.down}
-          position={DropdownPosition.right}
+          direction={dropdownDirection || DropdownDirection.down}
+          position={dropdownPosition || DropdownPosition.right}
           onSelect={this.onSelect}
           toggle={
-            <DropdownToggle
-              id="helpDropdownButton"
-              className={classNames('', this.props.className)}
-              iconComponent={null}
-              onToggle={this.onToggle}
-            >
-              <HelpIcon />
-            </DropdownToggle>
+            isTabletView ? (
+              <KebabToggle
+                id={dropdownId}
+                data-testid={dropdownId}
+                className={classNames('', this.props.className)}
+                onToggle={this.onToggle}
+              />
+            ) : (
+              <DropdownToggle
+                id={dropdownId}
+                data-testid={dropdownId}
+                className={classNames('', this.props.className)}
+                onToggle={this.onToggle}
+                iconComponent={null}
+              >
+                <HelpIcon />
+              </DropdownToggle>
+            )
           }
           isOpen={isOpen}
           isPlain={true}
-          dropdownItems={dropdownItems}
+          dropdownItems={[...dropdownItems, ...additionalDropdownItems]}
         />
       </>
     );

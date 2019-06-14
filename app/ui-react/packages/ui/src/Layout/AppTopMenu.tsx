@@ -34,10 +34,18 @@ export class AppTopMenu extends React.Component<
     const { children, username } = this.props;
     return (
       <Dropdown
+        id="appTopMenu"
+        data-testid="appTopMenu"
         isPlain={true}
         onSelect={this.onSelect}
         toggle={
-          <DropdownToggle onToggle={this.onToggle}>{username}</DropdownToggle>
+          <DropdownToggle
+            data-testid={'app-top-menu-user-dropdown'}
+            iconComponent={null}
+            onToggle={this.onToggle}
+          >
+            {username}
+          </DropdownToggle>
         }
         isOpen={this.state.isOpen}
         dropdownItems={React.Children.toArray(children)}

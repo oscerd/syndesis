@@ -1,5 +1,4 @@
 import {
-  getConnectionIcon,
   getStep,
   getSteps,
   isEndStep,
@@ -83,7 +82,7 @@ export class DescribeDataShapePage extends React.Component<
                   {
                     ...params,
                     actionId: state.step.action!.id!,
-                    step: '0',
+                    page: '0',
                   },
                   state
                 );
@@ -148,7 +147,7 @@ export class DescribeDataShapePage extends React.Component<
                         {
                           ...params,
                           actionId: stepKind.action!.id!,
-                          step: '0',
+                          page: '0',
                         } as IConfigureActionRouteParams,
                         {
                           ...state,
@@ -203,10 +202,6 @@ export class DescribeDataShapePage extends React.Component<
                         activeIndex: positionAsNumber,
                         activeStep: {
                           ...toUIStep(state.step.connection!),
-                          icon: getConnectionIcon(
-                            process.env.PUBLIC_URL,
-                            state.step.connection!
-                          ),
                         },
                         steps: toUIStepCollection(
                           getSteps(state.integration, params.flowId)

@@ -11,15 +11,15 @@ import {
   allFieldsRequired,
   getRequiredStatusText,
   toFormDefinition,
-  validateConfiguredProperties,
   validateRequiredProperties,
 } from '@syndesis/utils';
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import i18n from '../../../../../i18n';
 import { IWithConfigurationFormProps } from './WithConfigurationForm';
 
 export interface IConfigurationFormProps
-  extends Pick<IWithConfigurationFormProps, 'configurationStep'>,
+  extends Pick<IWithConfigurationFormProps, 'configurationPage'>,
     Pick<IWithConfigurationFormProps, 'initialValue'>,
     Pick<IWithConfigurationFormProps, 'oldAction'>,
     Pick<IWithConfigurationFormProps, 'onUpdatedIntegration'>,
@@ -33,7 +33,7 @@ export const ConfigurationForm: React.FunctionComponent<
   IConfigurationFormProps
 > = ({
   action,
-  configurationStep,
+  configurationPage,
   descriptor,
   initialValue,
   oldAction,
@@ -41,12 +41,13 @@ export const ConfigurationForm: React.FunctionComponent<
   onUpdatedIntegration,
   children,
 }) => {
+  const { t } = useTranslation('shared');
   const [error, setError] = React.useState();
   try {
     const steps = getActionSteps(descriptor);
-    const step = getActionStep(steps, configurationStep);
+    const step = getActionStep(steps, configurationPage);
     const definition = getActionStepDefinition(step);
-    const moreConfigurationSteps = configurationStep < steps.length - 1;
+    const moreConfigurationSteps = configurationPage < steps.length - 1;
     const onSave = async (
       values: { [key: string]: string },
       actions: any
@@ -70,41 +71,38 @@ export const ConfigurationForm: React.FunctionComponent<
       actions.setSubmitting(false);
     };
     const key = JSON.stringify(definition);
-    const isInitialValid = validateConfiguredProperties(
-      definition,
-      initialValue
-    );
     const requiredPrompt = getRequiredStatusText(
       definition,
       i18n.t('shared:AllFieldsRequired'),
       i18n.t('shared:FieldsMarkedWithStarRequired'),
       ''
     );
+    const validator = (values: IFormValue) =>
+      validateRequiredProperties(
+        definition,
+        (name: string) => `${name} is required`,
+        values
+      );
     return (
       <AutoForm<IFormValue>
-        i18nRequiredProperty={'* Required field'}
+        i18nRequiredProperty={t('shared:requiredFieldMessage')}
         allFieldsRequired={allFieldsRequired(definition)}
         i18nFieldsStatusText={requiredPrompt}
         definition={toFormDefinition(definition)}
         initialValue={initialValue as IFormValue}
-        isInitialValid={isInitialValid}
         onSave={onSave}
-        validate={(values: IFormValue) =>
-          validateRequiredProperties(
-            definition,
-            (name: string) => `${name} is required`,
-            values
-          )
-        }
+        validate={validator}
+        validateInitial={validator}
         key={key}
       >
-        {({ fields, handleSubmit, isValid, submitForm }) => (
+        {({ fields, handleSubmit, isValid, isSubmitting, submitForm }) => (
           <>
             <IntegrationEditorForm
-              i18nFormTitle={`${action.name} - ${action.description}`}
+              i18nFormTitle={`${action.name} - ${step.description}`}
               i18nBackAction={'Choose Action'}
               i18nNext={'Next'}
               isValid={isValid}
+              isLoading={isSubmitting}
               submitForm={() => {
                 setError(undefined);
                 submitForm();

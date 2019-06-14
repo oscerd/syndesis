@@ -1,33 +1,36 @@
 /* tslint:disable:object-literal-sort-keys */
-import { Step, StepKind } from '@syndesis/models';
+import {
+  Action,
+  ActionDescriptor,
+  DataShape,
+  Step,
+  StepKind,
+} from '@syndesis/models';
 import {
   ADVANCED_FILTER,
   AGGREGATE,
   BASIC_FILTER,
+  CHOICE,
   DATA_MAPPER,
   DataShapeKinds,
+  FLOW,
   LOG,
   SPLIT,
   TEMPLATE,
 } from './constants';
-import { toDataShapeKinds } from './helpers';
+import { toDataShapeKinds, toDataShapeKindType } from './helpers';
 
 export const ALL_STEPS: StepKind[] = [
   requiresInputDataShape({
-    id: undefined,
-    connection: undefined,
-    action: undefined,
     name: 'Data Mapper',
     description: 'Map fields from the input type to the output type.',
     stepKind: DATA_MAPPER,
     properties: {},
     configuredProperties: undefined,
+    visible: [],
   }),
   requiresOutputDataShape(
     {
-      id: undefined,
-      connection: undefined,
-      action: undefined,
       name: 'Basic Filter',
       description:
         'Continue the integration only if criteria you specify in simple input fields are met. Suitable for' +
@@ -35,24 +38,20 @@ export const ALL_STEPS: StepKind[] = [
       stepKind: BASIC_FILTER,
       properties: undefined,
       configuredProperties: undefined,
+      visible: [],
     },
     true
   ),
-  {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
+  requiresOutputDataShape({
     name: 'Template',
     stepKind: TEMPLATE,
     description:
       'Upload or create a Freemarker, Mustache or Velocity template to define consistent output data.',
     configuredProperties: undefined,
     properties: undefined,
-  },
+    visible: [],
+  }),
   noCollectionSupport({
-    id: undefined,
-    connection: undefined,
-    action: undefined,
     name: 'Advanced Filter',
     description:
       'Continue the integration only if criteria you define in scripting language expressions are met.',
@@ -70,11 +69,9 @@ $\{in.body.title\} // Evaluates true when body contains title.
       },
     },
     configuredProperties: undefined,
+    visible: [],
   }),
   {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
     name: 'Log',
     stepKind: LOG,
     description: "Send a message to the integration's log.",
@@ -95,22 +92,30 @@ $\{in.body.title\} // Evaluates true when body contains title.
         displayName: 'Custom Text',
         required: false,
       },
-      /*
-      loggingLevel: {
-        type: 'select',
-        displayName: 'Level',
-        value: 'INFO',
-        required: true,
-        enum: [
-          { value: 'INFO', label: 'INFO' },
-          { value: 'WARN', label: 'WARN' },
-          { value: 'ERROR', label: 'ERROR'},
-          {value: 'DEBUG', label: 'DEBUG'},
-          {value: 'TRACE', label: 'TRACE'}],
-      },
-      */
     },
+    visible: [],
   },
+  notAllowedInSubFlow(
+    requiresOutputDataShape(
+      {
+        action: {
+          actionType: 'step',
+          descriptor: {
+            inputDataShape: noShape(),
+            outputDataShape: anyShape(),
+          } as ActionDescriptor,
+        } as Action,
+        name: 'Conditional Flows',
+        description:
+          'Sends the message to different flows based on condition evaluation',
+        stepKind: CHOICE,
+        properties: {},
+        configuredProperties: undefined,
+        visible: [],
+      },
+      true
+    )
+  ),
   requiresOutputDataShape({
     id: undefined,
     connection: undefined,
@@ -120,6 +125,7 @@ $\{in.body.title\} // Evaluates true when body contains title.
     stepKind: SPLIT,
     properties: {},
     configuredProperties: undefined,
+    visible: [],
   }),
   requiresConsistentSplitAggregate({
     id: undefined,
@@ -130,51 +136,8 @@ $\{in.body.title\} // Evaluates true when body contains title.
     stepKind: AGGREGATE,
     properties: {},
     configuredProperties: undefined,
+    visible: [],
   }),
-  /*
-  {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
-    name: 'Store Data',
-    stepKind: STORE_DATA,
-    description:
-      'Store data from an invocation to be used later in the integration',
-    properties: {},
-    configuredProperties: undefined,
-  },
-  {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
-    name: 'Set Data',
-    stepKind: SET_DATA,
-    description: 'Enrich data used within an integration',
-    properties: {},
-    configuredProperties: undefined,
-  },
-  {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
-    name: 'Call Route',
-    stepKind: CALL_ROUTE,
-    description:
-      'Call a child integration route from the main integration flow',
-    properties: {},
-    configuredProperties: undefined,
-  },
-  {
-    id: undefined,
-    connection: undefined,
-    action: undefined,
-    name: 'Conditional Processing',
-    stepKind: CONDITIONAL_PROCESSING,
-    description: 'Add conditions and multiple paths for processing data',
-    properties: {},
-    configuredProperties: undefined,
-  }
-  */
 ];
 
 function stepsHaveOutputDataShape(steps: Step[]): boolean {
@@ -211,6 +174,28 @@ function stepsHaveInputDataShape(steps: Step[]): boolean {
   );
 }
 
+function notAllowedInSubFlow(obj: StepKind) {
+  obj.visible!.push(
+    (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+      return (
+        previousSteps.find(
+          s =>
+            typeof s.connection !== 'undefined' &&
+            typeof s.connection!.connectorId !== 'undefined' &&
+            s.connection!.connectorId! === FLOW
+        ) === undefined &&
+        subsequentSteps.find(
+          s =>
+            typeof s.connection !== 'undefined' &&
+            typeof s.connection.connectorId !== undefined &&
+            s.connection.connectorId === FLOW
+        ) === undefined
+      );
+    }
+  );
+  return obj;
+}
+
 // currently no steps fit this criteria but that could change
 // @ts-ignore
 function requiresInputOutputDataShapes(
@@ -218,30 +203,29 @@ function requiresInputOutputDataShapes(
   anyPrevious = true,
   anySubsequent = true
 ): StepKind {
-  obj.visible = (
-    position: number,
-    previousSteps: Step[],
-    subsequentSteps: Step[]
-  ) => {
-    if (!anyPrevious) {
-      // only test the first previous step that has some kind of data shape
-      const previousStep = previousSteps
-        .reverse()
-        .find(s => dataShapeExists(s));
-      previousSteps = previousStep ? [previousStep] : [];
-    }
-    if (!anySubsequent) {
-      // only test the next subsequent step that has a data shape
-      const subsequentStep = subsequentSteps.find(s =>
-        dataShapeExists(s, true)
+  obj.visible!.push(
+    (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+      if (!anyPrevious) {
+        // only test the first previous step that has some kind of data shape
+        const previousStep = previousSteps.reduceRight(
+          (foundStep, s) => (!foundStep && dataShapeExists(s) ? s : foundStep),
+          undefined as Step | undefined
+        );
+        previousSteps = previousStep ? [previousStep] : [];
+      }
+      if (!anySubsequent) {
+        // only test the next subsequent step that has a data shape
+        const subsequentStep = subsequentSteps.find(s =>
+          dataShapeExists(s, true)
+        );
+        subsequentSteps = subsequentStep ? [subsequentStep] : [];
+      }
+      return (
+        stepsHaveOutputDataShape(previousSteps) &&
+        stepsHaveInputDataShape(subsequentSteps)
       );
-      subsequentSteps = subsequentStep ? [subsequentStep] : [];
     }
-    return (
-      stepsHaveOutputDataShape(previousSteps) &&
-      stepsHaveInputDataShape(subsequentSteps)
-    );
-  };
+  );
   return obj;
 }
 
@@ -264,9 +248,10 @@ function dataShapeExists(step: Step, input = false): boolean {
 }
 
 function hasPrecedingCollection(previousSteps: Step[]) {
-  const previousDataShape = previousSteps
-    .reverse()
-    .find(s => dataShapeExists(s));
+  const previousDataShape = previousSteps.reduceRight(
+    (foundStep, s) => (!foundStep && dataShapeExists(s) ? s : foundStep),
+    undefined as Step | undefined
+  );
   return (
     previousDataShape &&
     previousDataShape.action &&
@@ -279,13 +264,11 @@ function hasPrecedingCollection(previousSteps: Step[]) {
 }
 
 function noCollectionSupport(obj: StepKind) {
-  obj.visible = (
-    position: number,
-    previousSteps: Step[],
-    subsequentSteps: Step[]
-  ) => {
-    return !hasPrecedingCollection(previousSteps);
-  };
+  obj.visible!.push(
+    (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+      return !hasPrecedingCollection(previousSteps);
+    }
+  );
   return obj;
 }
 
@@ -294,24 +277,20 @@ function requiresOutputDataShape(
   noCollectionSupportP = false
 ): StepKind {
   if (noCollectionSupportP) {
-    obj.visible = (
-      position: number,
-      previousSteps: Step[],
-      subsequentSteps: Step[]
-    ) => {
-      return (
-        stepsHaveOutputDataShape(previousSteps) &&
-        !hasPrecedingCollection(previousSteps)
-      );
-    };
+    obj.visible!.push(
+      (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+        return (
+          stepsHaveOutputDataShape(previousSteps) &&
+          !hasPrecedingCollection(previousSteps)
+        );
+      }
+    );
   } else {
-    obj.visible = (
-      position: number,
-      previousSteps: Step[],
-      subsequentSteps: Step[]
-    ) => {
-      return stepsHaveOutputDataShape(previousSteps);
-    };
+    obj.visible!.push(
+      (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+        return stepsHaveOutputDataShape(previousSteps);
+      }
+    );
   }
   return obj;
 }
@@ -321,60 +300,69 @@ function requiresInputDataShape(
   noCollectionSupportP = false
 ): StepKind {
   if (noCollectionSupportP) {
-    obj.visible = (
-      position: number,
-      previousSteps: Step[],
-      subsequentSteps: Step[]
-    ) => {
-      return (
-        stepsHaveInputDataShape(subsequentSteps) &&
-        !hasPrecedingCollection(previousSteps)
-      );
-    };
+    obj.visible!.push(
+      (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+        return (
+          stepsHaveInputDataShape(subsequentSteps) &&
+          !hasPrecedingCollection(previousSteps)
+        );
+      }
+    );
   } else {
-    obj.visible = (
-      position: number,
-      previousSteps: Step[],
-      subsequentSteps: Step[]
-    ) => {
-      return stepsHaveInputDataShape(subsequentSteps);
-    };
+    obj.visible!.push(
+      (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+        return stepsHaveInputDataShape(subsequentSteps);
+      }
+    );
   }
   return obj;
 }
 
 function requiresConsistentSplitAggregate(obj: StepKind): StepKind {
-  obj.visible = (
-    position: number,
-    previousSteps: Step[],
-    subsequentSteps: Step[]
-  ) => {
-    const countPreviousSplit = previousSteps.filter(s => s.stepKind === SPLIT)
-      .length;
-    const countPreviousAggregate = previousSteps.filter(
-      s => (s.stepKind || '').toLowerCase() === AGGREGATE
-    ).length;
+  obj.visible!.push(
+    (position: number, previousSteps: Step[], subsequentSteps: Step[]) => {
+      const countPreviousSplit = previousSteps.filter(s => s.stepKind === SPLIT)
+        .length;
+      const countPreviousAggregate = previousSteps.filter(
+        s => (s.stepKind || '').toLowerCase() === AGGREGATE
+      ).length;
 
-    if (countPreviousSplit <= countPreviousAggregate) {
-      return false;
+      if (countPreviousSplit <= countPreviousAggregate) {
+        return false;
+      }
+
+      const positionNextSplit = subsequentSteps.findIndex(
+        s => s.stepKind === SPLIT
+      );
+      const positionNextAggregate = subsequentSteps.findIndex(
+        s => s.stepKind === AGGREGATE
+      );
+
+      if (positionNextSplit === -1) {
+        return positionNextAggregate === -1;
+      }
+
+      return (
+        positionNextAggregate === -1 ||
+        positionNextSplit < positionNextAggregate
+      );
     }
-
-    const positionNextSplit = subsequentSteps.findIndex(
-      s => s.stepKind === SPLIT
-    );
-    const positionNextAggregate = subsequentSteps.findIndex(
-      s => s.stepKind === AGGREGATE
-    );
-
-    if (positionNextSplit === -1) {
-      return positionNextAggregate === -1;
-    }
-
-    return (
-      positionNextAggregate === -1 || positionNextSplit < positionNextAggregate
-    );
-  };
+  );
   return obj;
+}
+
+function anyShape() {
+  return {
+    kind: toDataShapeKindType(DataShapeKinds.ANY),
+    name: 'Any shape',
+  } as DataShape;
+}
+
+function noShape() {
+  return {
+    kind: toDataShapeKindType(DataShapeKinds.NONE),
+    name: 'No shape',
+  } as DataShape;
 }
 
 export interface IStepsResponse {

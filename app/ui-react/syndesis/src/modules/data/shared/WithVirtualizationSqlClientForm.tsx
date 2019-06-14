@@ -1,5 +1,5 @@
 import { WithVirtualizationHelpers } from '@syndesis/api';
-import { AutoForm, IFormDefinition } from '@syndesis/auto-form';
+import { AutoForm, IFormDefinition, IFormValue } from '@syndesis/auto-form';
 import * as H from '@syndesis/history';
 import { QueryResults, ViewDefinition } from '@syndesis/models';
 import { SqlClientContent, SqlClientForm } from '@syndesis/ui';
@@ -82,7 +82,7 @@ export class WithVirtualizationSqlClientForm extends React.Component<
   }
 
   public setQueryResults(results: QueryResults) {
-    results && results.columns.length > 0
+    results && results.columns && results.columns.length > 0
       ? this.setState({
           queryResults: results,
         })
@@ -100,7 +100,8 @@ export class WithVirtualizationSqlClientForm extends React.Component<
   }
 
   public buildRows(queryResults: QueryResults): Array<{}> {
-    return queryResults.rows
+    const allRows = queryResults.rows ? queryResults.rows : [];
+    return allRows
       .map(row => row.row)
       .map(row =>
         row.reduce(
@@ -116,8 +117,10 @@ export class WithVirtualizationSqlClientForm extends React.Component<
 
   public buildColumns(queryResults: QueryResults): IColumn[] {
     const columns = [];
-    for (const col of queryResults.columns) {
-      columns.push({ id: col.name, label: col.label });
+    if (queryResults.columns) {
+      for (const col of queryResults.columns) {
+        columns.push({ id: col.name, label: col.label });
+      }
     }
     return columns;
   }
@@ -191,6 +194,13 @@ export class WithVirtualizationSqlClientForm extends React.Component<
       view: this.getInitialView(),
     };
 
+    // The purpose of this function is to reset the query results
+    //  whenever a form selection is changed
+    const validate = (values: IFormValue) => {
+      this.setQueryResults(WithVirtualizationSqlClientForm.queryResultsEmpty);
+      return {};
+    };
+
     return (
       <Translation ns={['data', 'shared']}>
         {t => (
@@ -237,9 +247,10 @@ export class WithVirtualizationSqlClientForm extends React.Component<
                     };
                     return (
                       <AutoForm
-                        i18nRequiredProperty={'* Required field'}
+                        i18nRequiredProperty={t('shared:requiredFieldMessage')}
                         definition={formDefinition}
                         initialValue={initialValue}
+                        validate={validate}
                         onSave={(properties, actions) => {
                           doSubmit(properties).finally(() => {
                             actions.setSubmitting(false);
@@ -269,6 +280,12 @@ export class WithVirtualizationSqlClientForm extends React.Component<
                               this.state.queryResults
                             )}
                             targetVdb={'test'}
+                            i18nResultsTitle={i18n.t(
+                              'data:virtualization.queryResultsTitle'
+                            )}
+                            i18nResultsRowCountMsg={i18n.t(
+                              'data:virtualization.queryResultsRowCountMsg'
+                            )}
                             i18nEmptyStateInfo={i18n.t(
                               'data:virtualization.viewEmptyStateInfo'
                             )}

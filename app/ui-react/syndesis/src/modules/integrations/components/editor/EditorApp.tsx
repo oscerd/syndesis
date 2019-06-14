@@ -1,10 +1,12 @@
 /* tslint:disable:object-literal-sort-keys */
+import { NEW_INTEGRATION_ID } from '@syndesis/api';
 import * as H from '@syndesis/history';
 import { Integration } from '@syndesis/models';
 import * as React from 'react';
 import { EditSpecificationPage } from './apiProvider/EditSpecificationPage';
 import { ReviewActionsPage } from './apiProvider/ReviewActionsPage';
 import { SelectMethodPage } from './apiProvider/SelectMethodPage';
+import { ChoiceStepPage } from './choice/ChoiceStepPage';
 import { DataMapperPage } from './dataMapper/DataMapperPage';
 import { EditorRoutes } from './EditorRoutes';
 import { EditorSidebar } from './EditorSidebar';
@@ -76,6 +78,13 @@ export const EditorApp: React.FunctionComponent<IEditorApp> = ({
           ...state,
         })
       }
+      choiceHref={(step, params, state) =>
+        appResolvers.choice({
+          step,
+          ...params,
+          ...state,
+        })
+      }
       mapperHref={(step, params, state) =>
         appResolvers.dataMapper({
           step,
@@ -126,7 +135,7 @@ export const EditorApp: React.FunctionComponent<IEditorApp> = ({
       backHref={(p, s) => appResolvers.connection.selectAction({ ...p, ...s })}
       cancelHref={cancelHref}
       mode={mode}
-      nextStepHref={(p, s) =>
+      nextPageHref={(p, s) =>
         appResolvers.connection.configureAction({
           ...p,
           ...s,
@@ -236,6 +245,18 @@ export const EditorApp: React.FunctionComponent<IEditorApp> = ({
     />
   );
 
+  const choicePage = (
+    <ChoiceStepPage
+      cancelHref={cancelHref}
+      mode={mode}
+      sidebar={props => (
+        <EditorSidebar {...props} isAdding={mode === 'adding'} />
+      )}
+      postConfigureHref={postConfigureHref}
+      getBreadcrumb={getBreadcrumb}
+    />
+  );
+
   const selectMethodPage = (
     <SelectMethodPage
       cancelHref={(params, state) =>
@@ -285,7 +306,9 @@ export const EditorApp: React.FunctionComponent<IEditorApp> = ({
   const editSpecificationPage = (
     <EditSpecificationPage
       cancelHref={(params, state) =>
-        appResolvers.apiProvider.selectMethod({ ...params, ...state })
+        state.integration.id === NEW_INTEGRATION_ID
+          ? appResolvers.apiProvider.selectMethod({ ...params, ...state })
+          : cancelHref(params, state)
       }
       saveHref={(params, state) =>
         appResolvers.apiProvider.reviewActions({ ...params, ...state })
@@ -325,6 +348,10 @@ export const EditorApp: React.FunctionComponent<IEditorApp> = ({
       basicFilter={{
         basicFilterPath: appStepRoutes.basicFilter,
         basicFilterChildren: basicFilterPage,
+      }}
+      choice={{
+        choicePath: appStepRoutes.choice,
+        choiceChildren: choicePage,
       }}
       step={{
         configurePath: appStepRoutes.step,

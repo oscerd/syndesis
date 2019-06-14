@@ -41,7 +41,9 @@ export function getPreviewVdbName(): string {
 export function getViewDdl(vdbModel: RestVdbModel, viewName: string): string {
   const views = vdbModel.keng__ddl.split('CREATE VIEW ');
   if (views.length > 0) {
-    const viewDdl = views.find(view => view.startsWith(viewName));
+    const viewDdl = views.find(
+      view => view.startsWith(viewName) || view.startsWith('"' + viewName)
+    );
     if (viewDdl) {
       return 'CREATE VIEW ' + viewDdl;
     }
@@ -253,11 +255,13 @@ function getViewEditorState(
  * @param conns the connections
  * @param virtualizationsSourceStatuses the available virtualization sources
  * @param selectedConn name of a selected connection
+ * @param activeOnly (optional) true - return only active connections
  */
 export function generateDvConnections(
   conns: Connection[],
   virtualizationsSourceStatuses: VirtualizationSourceStatus[],
-  selectedConn: string
+  selectedConn: string,
+  activeOnly = false
 ): Connection[] {
   const dvConns: Connection[] = [];
   for (const conn of conns) {
@@ -278,7 +282,11 @@ export function generateDvConnections(
       selectionState = DvConnectionSelection.SELECTED;
     }
     conn.options = { dvStatus: connStatus, dvSelected: selectionState };
-    dvConns.push(conn);
+    if (!activeOnly) {
+      dvConns.push(conn);
+    } else if (connStatus === DvConnectionStatus.ACTIVE) {
+      dvConns.push(conn);
+    }
   }
   return dvConns;
 }
@@ -312,10 +320,43 @@ export function isDvConnectionSelected(conn: Connection) {
 }
 
 /**
+ * Get the OData url from the virtualization, if available
+ * @param virtualization the RestDataService
+ */
+export function getOdataUrl(virtualization: RestDataService): string {
+  return virtualization.odataHostName
+    ? 'https://' + virtualization.odataHostName + '/odata'
+    : '';
+}
+
+/**
+ * Construct the pod build log url from the supplied info
+ * @param consoleUrl the console url
+ * @param namespace namespace of the DV pod
+ * @param publishPodName name of the DV pod
+ */
+export function getPodLogUrl(
+  consoleUrl: string,
+  namespace?: string,
+  publishPodName?: string
+): string {
+  return namespace && publishPodName
+    ? consoleUrl +
+        '/project/' +
+        namespace +
+        '/browse/pods/' +
+        publishPodName +
+        '?tab=logs'
+    : '';
+}
+
+/**
  * Get publishing state details for the specified virtualization
+ * @param consoleUrl the console url
  * @param virtualization the RestDataService
  */
 export function getPublishingDetails(
+  consoleUrl: string,
   virtualization: RestDataService
 ): VirtualizationPublishingDetails {
   // Determine published state
@@ -345,8 +386,12 @@ export function getPublishingDetails(
     default:
       break;
   }
-  if (virtualization.publishLogUrl) {
-    publishStepDetails.logUrl = virtualization.publishLogUrl;
+  if (virtualization.publishPodName) {
+    publishStepDetails.logUrl = getPodLogUrl(
+      consoleUrl,
+      virtualization.podNamespace,
+      virtualization.publishPodName
+    );
   }
   return publishStepDetails;
 }
@@ -371,12 +416,9 @@ export function getPreviewSql(viewDefinition: ViewDefinition): string {
  */
 function getPreviewTableName(sourcePath: string): string {
   // Assemble the name, utilizing the schema model suffix
-  return (
-    getConnectionName(sourcePath).toLowerCase() +
-    SCHEMA_MODEL_SUFFIX +
-    '.' +
-    getNodeName(sourcePath)
-  );
+  return `"${getConnectionName(
+    sourcePath
+  ).toLowerCase()}${SCHEMA_MODEL_SUFFIX}"."${getNodeName(sourcePath)}"`;
 }
 
 /**

@@ -1,5 +1,5 @@
-import { getConnectionIcon, WithConnectors } from '@syndesis/api';
-import { Connector, IConnectionWithIconFile } from '@syndesis/models';
+import { WithConnectors } from '@syndesis/api';
+import { Connector } from '@syndesis/models';
 import {
   ConnectionCard,
   ConnectionCreatorLayout,
@@ -15,7 +15,7 @@ import { WithListViewToolbarHelpers, WithLoader } from '@syndesis/utils';
 import * as React from 'react';
 import { Translation } from 'react-i18next';
 import i18n from '../../../../i18n';
-import { ApiError, PageTitle } from '../../../../shared';
+import { ApiError, EntityIcon, PageTitle } from '../../../../shared';
 import { ConnectionCreatorBreadSteps } from '../../components';
 import { ConnectionCreatorBreadcrumb } from '../../components/ConnectionCreatorBreadcrumb';
 import resolvers from '../../resolvers';
@@ -62,7 +62,7 @@ const sortByName = {
 
 const sortTypes: ISortType[] = [sortByName];
 
-export default class ConnectorsPage extends React.Component {
+export class ConnectorsPage extends React.Component {
   public render() {
     return (
       <Translation ns={['connections', 'shared']}>
@@ -70,7 +70,7 @@ export default class ConnectorsPage extends React.Component {
           <WithConnectors>
             {({ data, hasData, error }) => (
               <>
-                <PageTitle title={'Select connector'} />
+                <PageTitle title={t('connections:create:connector:title')} />
                 <ConnectionCreatorBreadcrumb
                   cancelHref={resolvers.connections()}
                 />
@@ -140,10 +140,13 @@ export default class ConnectorsPage extends React.Component {
                                               'configurationRequired'
                                             )}
                                             i18nTechPreview={t('techPreview')}
-                                            icon={getConnectionIcon(
-                                              process.env.PUBLIC_URL,
-                                              connector as IConnectionWithIconFile
-                                            )}
+                                            icon={
+                                              <EntityIcon
+                                                entity={connector}
+                                                alt={connector.name}
+                                                width={46}
+                                              />
+                                            }
                                             href={resolvers.create.configureConnector(
                                               {
                                                 connector,

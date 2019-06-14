@@ -22,11 +22,12 @@ import org.apache.camel.Component;
 import org.apache.camel.Endpoint;
 import org.apache.camel.component.olingo4.Olingo4AppEndpointConfiguration;
 import org.apache.camel.component.olingo4.Olingo4Component;
-import org.apache.http.HttpHeaders;
+import org.apache.camel.util.ObjectHelper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import io.syndesis.connector.odata.ODataConstants;
 import io.syndesis.connector.odata.ODataUtil;
+import io.syndesis.connector.support.util.ConnectorOptions;
 import io.syndesis.connector.support.util.PropertyBuilder;
 import io.syndesis.integration.component.proxy.ComponentDefinition;
 import io.syndesis.integration.component.proxy.ComponentProxyComponent;
@@ -191,15 +192,11 @@ public final class ODataComponent extends ComponentProxyComponent implements ODa
         Olingo4Component component = new Olingo4Component(getCamelContext());
         Olingo4AppEndpointConfiguration configuration = new Olingo4AppEndpointConfiguration();
 
-        //
-        // Ensure that full odata metadata is returned by the olingo request
-        //
         Map<String, String> httpHeaders = new HashMap<>();
-        httpHeaders.put(HttpHeaders.ACCEPT, "application/json;odata.metadata=full,application/xml,*/*");
         configuration.setHttpHeaders(httpHeaders);
 
-        Object methodName = options.get(METHOD_NAME);
-        if (methodName == null) {
+        String methodName = ConnectorOptions.extractOption(options, METHOD_NAME);
+        if (ObjectHelper.isEmpty(methodName)) {
             throw new IllegalStateException("No method specified for odata component");
         }
 

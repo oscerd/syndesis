@@ -1,5 +1,4 @@
 import {
-  getConnectionIcon,
   getStep,
   getSteps,
   isEndStep,
@@ -39,7 +38,7 @@ export interface IConfigureActionPageProps extends IPageWithEditorBreadcrumb {
     s: IConfigureActionRouteState
   ) => H.LocationDescriptor;
   mode: 'adding' | 'editing';
-  nextStepHref: (
+  nextPageHref: (
     p: IConfigureActionRouteParams,
     s: IConfigureActionRouteState
   ) => H.LocationDescriptorObject;
@@ -78,20 +77,31 @@ export class ConfigureActionPage extends React.Component<
             IConfigureActionRouteState
           >>
             {(params, state, { history }) => {
-              const stepAsNumber = parseInt(params.step, 10);
+              const pageAsNumber = parseInt(params.page, 10);
               const positionAsNumber = parseInt(params.position, 10);
               const oldStepConfig = getStep(
                 state.integration,
                 params.flowId,
                 positionAsNumber
               );
+              /**
+               * configured properties will be set in the route state for
+               * configuration pages higher than 0. If it's not set, its value
+               * depends on the mode: for `adding` there is no initial value,
+               * for `editing` we can fetch it from the old step config object.
+               */
+              const configuredProperties =
+                state.configuredProperties ||
+                (this.props.mode === 'editing' && oldStepConfig
+                  ? oldStepConfig.configuredProperties
+                  : {});
               const onUpdatedIntegration = async ({
                 action,
                 moreConfigurationSteps,
                 values,
               }: IOnUpdatedIntegrationProps) => {
                 const updatedIntegration = await (this.props.mode ===
-                  'adding' && stepAsNumber === 0
+                  'adding' && pageAsNumber === 0
                   ? addConnection
                   : updateConnection)(
                   state.updatedIntegration || state.integration,
@@ -103,13 +113,17 @@ export class ConfigureActionPage extends React.Component<
                 );
                 if (moreConfigurationSteps) {
                   history.push(
-                    this.props.nextStepHref(
+                    this.props.nextPageHref(
                       {
                         ...params,
-                        step: `${stepAsNumber + 1}`,
+                        page: `${pageAsNumber + 1}`,
                       },
                       {
                         ...state,
+                        configuredProperties: {
+                          ...values,
+                          ...configuredProperties,
+                        },
                         updatedIntegration,
                       }
                     )
@@ -204,10 +218,6 @@ export class ConfigureActionPage extends React.Component<
                       activeIndex: positionAsNumber,
                       activeStep: {
                         ...toUIStep(state.connection),
-                        icon: getConnectionIcon(
-                          process.env.PUBLIC_URL,
-                          state.connection
-                        ),
                       },
                       steps: toUIStepCollection(
                         getSteps(state.integration, params.flowId)
@@ -215,6 +225,7 @@ export class ConfigureActionPage extends React.Component<
                     })}
                     content={
                       <WithConfigurationForm
+                        key={`${positionAsNumber}:${pageAsNumber}`}
                         connection={state.connection}
                         actionId={params.actionId}
                         oldAction={
@@ -222,8 +233,8 @@ export class ConfigureActionPage extends React.Component<
                             ? oldStepConfig!.action!
                             : undefined
                         }
-                        configurationStep={stepAsNumber}
-                        initialValue={state.configuredProperties}
+                        configurationPage={pageAsNumber}
+                        initialValue={configuredProperties}
                         onUpdatedIntegration={onUpdatedIntegration}
                         chooseActionHref={this.props.backHref(params, state)}
                       />

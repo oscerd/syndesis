@@ -17,6 +17,7 @@ package io.syndesis.server.api.generator.swagger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,9 +36,14 @@ import io.syndesis.common.model.connection.Connector;
 import io.syndesis.common.model.connection.ConnectorSettings;
 import io.syndesis.common.util.Json;
 import io.syndesis.common.util.openapi.OpenApiHelper;
+import io.syndesis.server.api.generator.APIValidationContext;
 
+import org.json.JSONException;
 import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.skyscreamer.jsonassert.JSONCompareMode;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import static io.syndesis.server.api.generator.swagger.TestHelper.reformatJson;
@@ -157,7 +163,7 @@ public class BaseSwaggerConnectorGeneratorTest extends AbstractSwaggerConnectorT
         assertThat(generated.getProperties().keySet()).contains("accessToken", "authorizationEndpoint", "tokenEndpoint", "clientId",
             "clientSecret");
         assertThat(generated.getProperties().get("authenticationType").getEnum())
-            .containsExactly(new ConfigurationProperty.PropertyValue.Builder().value("oauth2").label("OAuth 2.0").build());
+            .containsExactly(new ConfigurationProperty.PropertyValue.Builder().value("oauth2:oauth2").label("OAuth 2.0 - oauth2").build());
     }
 
     @Test
@@ -240,6 +246,27 @@ public class BaseSwaggerConnectorGeneratorTest extends AbstractSwaggerConnectorT
     }
 
     @Test
+    public void shouldParseSpecificationWithSecurityRequirements() throws JSONException {
+        final SwaggerModelInfo info = BaseSwaggerConnectorGenerator.parseSpecification(new ConnectorSettings.Builder()
+            .putConfiguredProperty("specification", "{\"swagger\":\"2.0\",\"paths\":{\"/api\":{\"get\":{\"security\":[{\"secured\":[]}]}}}}")
+            .build(),
+            APIValidationContext.CONSUMED_API);
+
+        final Swagger model = info.getModel();
+        assertThat(model.getPath("/api").getGet().getSecurity()).containsOnly(Collections.singletonMap("secured", Collections.emptyList()));
+
+        final String resolvedSpecification = info.getResolvedSpecification();
+        JSONAssert.assertEquals(
+            "{\"swagger\":\"2.0\",\"paths\":{\"/api\":{\"get\":{\"security\":[{\"secured\":[]}]}}}}",
+            resolvedSpecification, JSONCompareMode.STRICT);
+
+        final ObjectNode resolvedJsonGraph = info.getResolvedJsonGraph();
+        final JsonNode securityRequirement = resolvedJsonGraph.get("paths").get("/api").get("get").get("security");
+        assertThat(securityRequirement).hasSize(1);
+        assertThat(securityRequirement.get(0).get("secured")).isEmpty();
+    }
+
+    @Test
     public void shouldProvideInfoFromPetstoreSwagger() throws IOException {
         final String specification = resource("/swagger/petstore.swagger.json");
 
@@ -259,8 +286,7 @@ public class BaseSwaggerConnectorGeneratorTest extends AbstractSwaggerConnectorT
         assertThat(summary).isEqualToIgnoringGivenFields(expected, "icon", "description", "properties", "warnings", "configuredProperties");
         assertThat(summary.getIcon()).matches(s -> s.isPresent() && s.get().startsWith("data:image"));
         assertThat(summary.getDescription()).startsWith("This is a sample server Petstore server");
-        assertThat(summary.getProperties().keySet()).contains("host", "basePath", "authenticationType", "clientId", "clientSecret",
-            "accessToken", "authorizationEndpoint", "oauthScopes", "specification");
+        assertThat(summary.getProperties().keySet()).contains("host", "basePath", "authenticationType", "specification");
         assertThat(summary.getConfiguredProperties().keySet()).containsOnly("specification");
         assertThat(reformatJson(summary.getConfiguredProperties().get("specification"))).isEqualTo(reformatJson(specification));
     }

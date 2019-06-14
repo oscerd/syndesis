@@ -1,5 +1,5 @@
 /* tslint:disable:object-literal-sort-keys no-empty-interface */
-import { getStep } from '@syndesis/api';
+import { IFormValue } from '@syndesis/auto-form';
 import { ConnectionOverview, Integration, StepKind } from '@syndesis/models';
 import { makeResolver, makeResolverNoParams } from '@syndesis/utils';
 import { configureIndexMapper } from '../../resolvers';
@@ -9,6 +9,8 @@ import {
   IApiProviderReviewActionsRouteState,
   IBaseApiProviderRouteParams,
   IBaseApiProviderRouteState,
+  IChoiceStepRouteParams,
+  IChoiceStepRouteState,
   IConfigureActionRouteParams,
   IConfigureActionRouteState,
   IConfigureStepRouteParams,
@@ -50,7 +52,8 @@ export interface IEditorSelectAction extends IEditorSelectConnection {
 
 export interface IEditorConfigureAction extends IEditorSelectAction {
   actionId: string;
-  step?: string;
+  configuredProperties?: IFormValue;
+  page?: string;
   updatedIntegration?: Integration;
 }
 
@@ -97,10 +100,11 @@ export const configureSelectActionMapper = ({
 export const configureConfigureActionMapper = ({
   actionId,
   flowId,
-  step,
+  page,
   integration,
   updatedIntegration,
   position,
+  configuredProperties,
   ...rest
 }: IEditorConfigureAction) => {
   const { params, state } = configureSelectActionMapper({
@@ -109,18 +113,16 @@ export const configureConfigureActionMapper = ({
     integration,
     position,
   });
-  const positionAsNumber = parseInt(position, 10);
-  const stepObject = getStep(integration, flowId, positionAsNumber) || {};
   return {
     params: {
       ...params,
       actionId,
-      step: `${step || 0}`,
+      page: `${page || 0}`,
     } as IConfigureActionRouteParams,
     state: {
       ...state,
+      configuredProperties,
       updatedIntegration,
-      configuredProperties: stepObject.configuredProperties || {},
     } as IConfigureActionRouteState,
   };
 };
@@ -297,7 +299,12 @@ export function makeEditorResolvers(esr: typeof stepRoutes) {
       IEditorConfigureStep,
       IRuleFilterStepRouteParams,
       IRuleFilterStepRouteState
-    >(esr.basicFilter, configureConfigureDataMapperMapper),
+    >(esr.basicFilter, configureConfigureStepMapper),
+    choice: makeResolver<
+      IEditorConfigureStep,
+      IChoiceStepRouteParams,
+      IChoiceStepRouteState
+    >(esr.choice, configureConfigureStepMapper),
     dataMapper: makeResolver<
       IEditorConfigureStep,
       IDataMapperRouteParams,

@@ -10,9 +10,18 @@ export default describe('ConnectionCard', () => {
   const selectUserGuideHandler = jest.fn();
   const selectConnectorsGuideHandler = jest.fn();
   const selectContactUsHandler = jest.fn();
+  const logout = jest.fn();
   const testComponent = (
     <MemoryRouter>
       <AppLayout
+        logoutItem={{
+          key: 'logoutMenuItem',
+          onClick: logout,
+          id: 'ui-logout-link',
+          className: 'pf-c-dropdown__menu-item',
+          children: 'Logout',
+        }}
+        username={'developer'}
         onSelectSupport={selectSupportHandler}
         onSelectSampleIntegrationTutorials={
           selectSampleIntegrationTutorialsHandler
@@ -22,7 +31,6 @@ export default describe('ConnectionCard', () => {
         onSelectContactUs={selectContactUsHandler}
         pictograph={'Syndesis'}
         onShowAboutModal={modalHandler}
-        appNav={<div data-testid="appnav">appnav</div>}
         verticalNav={[
           <PfVerticalNavItem
             exact={true}
@@ -32,7 +40,7 @@ export default describe('ConnectionCard', () => {
             data-testid={'navlink'}
           />,
         ]}
-        logoHref={'#test'}
+        logoOnClick={() => false}
         showNavigation={false}
         onNavigationCollapse={() => true}
         onNavigationExpand={() => true}
@@ -40,9 +48,10 @@ export default describe('ConnectionCard', () => {
     </MemoryRouter>
   );
 
-  it('app navigation items should render', () => {
+  it('should render a top menu and help dropdown', () => {
     const { getByTestId } = render(testComponent);
-    expect(getByTestId('appnav')).toBeTruthy();
+    expect(getByTestId('appTopMenu')).toBeTruthy();
+    expect(getByTestId('helpDropdownButton')).toBeTruthy();
   });
 
   it('vertical navigation items should render', () => {

@@ -1,4 +1,4 @@
-import { ALL_STEPS, createStep, DATA_MAPPER } from '@syndesis/api';
+import { ALL_STEPS, createStep, DATA_MAPPER, getStep } from '@syndesis/api';
 import * as H from '@syndesis/history';
 import { StepKind } from '@syndesis/models';
 import { useRouteData } from '@syndesis/utils';
@@ -11,6 +11,7 @@ import { AddStepPage } from './components/editor/AddStepPage';
 import { EditorApp } from './components/editor/EditorApp';
 import { EditorBreadcrumb } from './components/editor/EditorBreadcrumb';
 import {
+  DataShapeDirection,
   IBaseFlowRouteParams,
   IBaseRouteParams,
   IBaseRouteState,
@@ -104,8 +105,8 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                               integration,
                             })
                           : resolvers.create.finish.selectStep({
-                              integration,
                               ...params,
+                              integration,
                               position: '1',
                             })
                       }
@@ -130,8 +131,8 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                       cancelHref={resolvers.list}
                       postConfigureHref={(integration, p) =>
                         resolvers.create.configure.index({
-                          integration,
                           ...p,
+                          integration,
                         })
                       }
                       getBreadcrumb={getBreadcrumb}
@@ -186,6 +187,13 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                           ...s,
                         })
                       }
+                      choiceHref={(step, p, s) =>
+                        resolvers.create.configure.editStep.choice({
+                          step,
+                          ...p,
+                          ...s,
+                        })
+                      }
                       getAddMapperStepHref={(position, p, s) =>
                         resolvers.create.configure.addStep.dataMapper({
                           position: `${position}`,
@@ -233,6 +241,28 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                         })
                       }
                       getBreadcrumb={getBreadcrumb}
+                      getFlowHref={(flowId, p, s) =>
+                        resolvers.create.configure.index({ ...p, ...s, flowId })
+                      }
+                      getGotoDescribeDataHref={(position, flowId, p, s) => {
+                        const step = getStep(
+                          state.integration,
+                          flowId,
+                          position
+                        ) as StepKind;
+                        return resolvers.create.configure.editStep.connection.describeData(
+                          {
+                            ...p,
+                            ...{
+                              ...s,
+                              connection: step.connection!,
+                              step,
+                            },
+                            direction: DataShapeDirection.OUTPUT,
+                            position: `${position}`,
+                          }
+                        );
+                      }}
                     />
                   )}
                 </WithLeaveConfirmation>
@@ -282,8 +312,8 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                       }
                       postConfigureHref={(integration, p) =>
                         resolvers.create.configure.index({
-                          integration,
                           ...p,
+                          integration,
                         })
                       }
                       getBreadcrumb={getBreadcrumb}
@@ -312,8 +342,8 @@ export const IntegrationCreatorApp: React.FunctionComponent = () => {
                       }
                       postConfigureHref={(integration, p) =>
                         resolvers.create.configure.index({
-                          integration,
                           ...p,
+                          integration,
                         })
                       }
                       getBreadcrumb={getBreadcrumb}

@@ -33,10 +33,7 @@ export function sanitizeValues<T>(
 ): T {
   return Object.keys(definition).reduce((result, key): any => {
     const prop = definition[key];
-    let value = massageValue(prop, initialValue[key]);
-    if (value == null) {
-      value = massageValue(prop, prop.defaultValue);
-    }
+    const value = massageValue(prop, initialValue[key], prop.defaultValue);
     return { ...result, [key]: value };
   }, {}) as T;
 }
@@ -67,6 +64,8 @@ export function enrichAndOrderProperties(definition: IFormDefinition) {
 export function massageType(property: IFormDefinitionProperty) {
   let type = property.type || 'text';
   switch (type) {
+    case 'hidden':
+      return type;
     case 'int':
     case 'integer':
     case 'long':
@@ -105,10 +104,14 @@ export function massageRequired(property: IFormDefinitionProperty): any {
   }
 }
 
-export function getArrayRows(missing: number, definition: IFormDefinition) {
+export function getNewArrayRow(definition: IFormDefinition) {
+  return sanitizeValues(definition, {});
+}
+
+export function getNewArrayRows(missing: number, definition: IFormDefinition) {
   const answer: any[] = [];
   for (let i = 0; i < missing; i++) {
-    answer.push(sanitizeValues({}, definition));
+    answer.push(getNewArrayRow(definition));
   }
   return answer;
 }
@@ -118,13 +121,13 @@ export function sanitizeInitialArrayValue(
   value?: any[],
   minimum?: number
 ) {
-  const sanitizedValue = value || [];
+  const sanitizedValue = (value || []).map(v => sanitizeValues(definition, v));
   const available = sanitizedValue.length;
   const missing = (minimum || 0) - available;
   if (missing < 0) {
-    return value;
+    return sanitizedValue;
   }
-  return [...sanitizedValue, ...getArrayRows(missing, definition)];
+  return [...sanitizedValue, ...getNewArrayRows(missing, definition)];
 }
 
 /**
@@ -135,13 +138,19 @@ export function sanitizeInitialArrayValue(
  * @param property
  * @param value
  */
-export function massageValue(property: IFormDefinitionProperty, value?: any) {
+export function massageValue(
+  property: IFormDefinitionProperty,
+  value?: any,
+  defaultValue?: any
+) {
   switch (property.type) {
     case 'number':
-      return parseInt(value || 0, 10);
+      return parseInt(value || defaultValue || 0, 10);
     case 'boolean':
     case 'checkbox':
-      return String(value || 'false').toLocaleLowerCase() === 'true';
+      return (
+        String(value || defaultValue || 'false').toLocaleLowerCase() === 'true'
+      );
     case 'array':
       const minElements =
         typeof property.arrayDefinitionOptions !== 'undefined'
@@ -161,8 +170,8 @@ export function massageValue(property: IFormDefinitionProperty, value?: any) {
         property.enum &&
         property.enum.length > 0
       ) {
-        return property.enum[0].value;
+        return defaultValue || property.enum[0].value || '';
       }
-      return value || '';
+      return value || defaultValue || '';
   }
 }

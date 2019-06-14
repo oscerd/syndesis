@@ -7,8 +7,6 @@ import {
   AboutModal,
   AboutModalContent,
   AppLayout,
-  AppTopMenu,
-  PfDropdownItem,
   PfVerticalNavItem,
 } from '../../src';
 import { withState } from '@dump247/storybook-state';
@@ -41,10 +39,20 @@ stories.add(
                 version={'1.7-SNAPSHOT'}
                 commitId={'dd8b5445fd74f956147eb0a21870d0d5c3e0fb69'}
                 buildId={'60dfad7e-fba5-49e9-b393-e806a135299e'}
+                i18nBuildIdLabel={'Build ID:'}
+                i18nCommitIdLabel={'Commit ID:'}
               />
             </AboutModal>
 
             <AppLayout
+              username={'developer'}
+              logoutItem={{
+                key: 'logoutMenuItem',
+                onClick: logLogout,
+                id: 'ui-logout-link',
+                className: 'pf-c-dropdown__menu-item',
+                children: 'Logout',
+              }}
               onNavigationCollapse={() => null}
               onNavigationExpand={() => null}
               onSelectConnectorsGuide={logDropdownItemSelection}
@@ -58,18 +66,6 @@ stories.add(
               }}
               showNavigation={true}
               pictograph={text('Application title', 'Syndesis')}
-              appNav={
-                <AppTopMenu username={'developer'}>
-                  <PfDropdownItem
-                    onClick={event => {
-                      event && event.preventDefault();
-                      logLogout();
-                    }}
-                  >
-                    Logout
-                  </PfDropdownItem>
-                </AppTopMenu>
-              }
               verticalNav={[
                 <PfVerticalNavItem
                   exact={true}
@@ -84,7 +80,7 @@ stories.add(
                   key={2}
                 />,
               ]}
-              logoHref={'#test'}
+              logoOnClick={action('Logo clicked')}
             />
           </>
         </MemoryRouter>

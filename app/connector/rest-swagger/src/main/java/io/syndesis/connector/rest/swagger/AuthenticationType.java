@@ -15,6 +15,19 @@
  */
 package io.syndesis.connector.rest.swagger;
 
+import java.util.Objects;
+
 public enum AuthenticationType {
-    basic, none, oauth2, apiKey
+    apiKey, basic, none, oauth2;
+
+    public static AuthenticationType fromString(final String value) {
+        Objects.requireNonNull(value, "authenticationType");
+
+        final int idx = value.indexOf(':');
+        if (idx > 0) {
+            return valueOf(value.substring(0, idx));
+        }
+
+        return valueOf(value);
+    }
 }

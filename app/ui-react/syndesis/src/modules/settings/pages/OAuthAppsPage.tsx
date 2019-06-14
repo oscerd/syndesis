@@ -19,7 +19,6 @@ import {
   allFieldsRequired,
   getRequiredStatusText,
   toFormDefinition,
-  validateConfiguredProperties,
   validateRequiredProperties,
   WithListViewToolbarHelpers,
   WithLoader,
@@ -27,7 +26,7 @@ import {
 import * as React from 'react';
 import { Translation } from 'react-i18next';
 import i18n from '../../../i18n';
-import { ApiError, PageTitle } from '../../../shared';
+import { ApiError, EntityIcon, PageTitle } from '../../../shared';
 
 function getFilteredAndSortedOAuthApps(
   oauthApps: OAuthApp[],
@@ -200,10 +199,6 @@ export class OAuthAppsPage extends React.Component<{}, IOAuthAppsPageState> {
                                           const key = JSON.stringify(
                                             configuration
                                           );
-                                          const isInitialValid = validateConfiguredProperties(
-                                            definition,
-                                            configuration
-                                          );
                                           const requiredPrompt = getRequiredStatusText(
                                             definition,
                                             i18n.t('shared:AllFieldsRequired'),
@@ -212,6 +207,15 @@ export class OAuthAppsPage extends React.Component<{}, IOAuthAppsPageState> {
                                             ),
                                             ''
                                           );
+                                          const validator = (
+                                            values: IFormValue
+                                          ) =>
+                                            validateRequiredProperties(
+                                              definition,
+                                              (name: string) =>
+                                                `${name} is required`,
+                                              values
+                                            );
                                           return (
                                             <OAuthAppListItem
                                               key={index}
@@ -220,7 +224,14 @@ export class OAuthAppsPage extends React.Component<{}, IOAuthAppsPageState> {
                                                 this.state.currentItemId ===
                                                 oauthApp.id
                                               }
-                                              icon={oauthApp.icon!}
+                                              icon={
+                                                <EntityIcon
+                                                  entity={oauthApp}
+                                                  alt={oauthApp.name}
+                                                  width={30}
+                                                  height={30}
+                                                />
+                                              }
                                               i18nNotConfiguredText={t(
                                                 'settings:OAuthAppNotConfigured'
                                               )}
@@ -238,20 +249,11 @@ export class OAuthAppsPage extends React.Component<{}, IOAuthAppsPageState> {
                                                 i18nFieldsStatusText={
                                                   requiredPrompt
                                                 }
-                                                isInitialValid={isInitialValid}
                                                 i18nRequiredProperty={t(
                                                   'shared:requiredFieldMessage'
                                                 )}
-                                                validate={(
-                                                  values: IFormValue
-                                                ) =>
-                                                  validateRequiredProperties(
-                                                    definition,
-                                                    (name: string) =>
-                                                      `${name} is required`,
-                                                    values
-                                                  )
-                                                }
+                                                validate={validator}
+                                                validateInitial={validator}
                                                 initialValue={
                                                   configuration as IFormValue
                                                 }

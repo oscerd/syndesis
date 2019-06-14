@@ -7,7 +7,7 @@ import { IDataMapperPageProps } from './dataMapper/DataMapperPage';
 import { ConfigureActionPage } from './endpoint/ConfigureActionPage';
 import { DescribeDataShapePage } from './endpoint/DescribeDataShapePage';
 import { SelectActionPage } from './endpoint/SelectActionPage';
-import { TemplateStepPage } from './template/TemplateStepPage';
+import { ITemplateStepPageProps } from './template/TemplateStepPage';
 
 export interface IEndpointEditorAppProps {
   selectActionPath: string;
@@ -75,7 +75,7 @@ export const ApiProviderApp: React.FunctionComponent<
 
 export interface ITemplateAppProps {
   templatePath: string;
-  templateChildren: React.ReactElement<TemplateStepPage>;
+  templateChildren: React.ReactElement<ITemplateStepPageProps>;
 }
 export const TemplateApp: React.FunctionComponent<
   ITemplateAppProps
@@ -104,6 +104,22 @@ export const BasicFilterApp: React.FunctionComponent<
         path={props.basicFilterPath}
         exact={true}
         children={props.basicFilterChildren}
+      />
+    </Switch>
+  );
+};
+
+export interface IChoiceAppProps {
+  choicePath: string;
+  choiceChildren: React.ReactElement<IChoiceAppProps>;
+}
+export const ChoiceApp: React.FunctionComponent<IChoiceAppProps> = props => {
+  return (
+    <Switch>
+      <Route
+        path={props.choicePath}
+        exact={true}
+        children={props.choiceChildren}
       />
     </Switch>
   );
@@ -169,6 +185,7 @@ export interface IEditorAppProps {
   template: ITemplateAppProps;
   dataMapper: IDataMapperAppProps;
   basicFilter: IBasicFilterAppProps;
+  choice: IChoiceAppProps;
   step: IStepAppProps;
   extension: IExtensionAppProps;
 }
@@ -222,6 +239,12 @@ export const EditorRoutes: React.FunctionComponent<IEditorAppProps> = props => {
         <BasicFilterApp
           basicFilterPath={props.basicFilter.basicFilterPath}
           basicFilterChildren={props.basicFilter.basicFilterChildren}
+        />
+      </Route>
+      <Route path={props.choice.choicePath}>
+        <ChoiceApp
+          choicePath={props.choice.choicePath}
+          choiceChildren={props.choice.choiceChildren}
         />
       </Route>
       <Route path={props.step.configurePath}>

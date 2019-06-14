@@ -1,8 +1,14 @@
 
 .recent-updates-item {
-  cursor: pointer;
-  font-size: smaller;
+  cursor: default;
   padding: 10px 0;
+}
+
+.recent-updates-item .recent-updates-item__title-container {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .recent-updates-item:hover {

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { FormBuilder } from '../FormBuilder';
 import { IFormArrayControlProps, IFormArrayDefinitionOptions } from '../models';
-import { getArrayRows } from '../utils';
+import { getNewArrayRow } from '../utils';
 import { toValidHtmlId } from './helpers';
 import { TextButton } from './TextButton';
 
@@ -92,7 +92,7 @@ export class FormArrayComponent extends React.Component<
                                 onClick={() => {
                                   this.props.move(index, index - 1);
                                 }}
-                                visible={index > 0}
+                                enable={index > 0}
                               >
                                 <i className="fa fa-arrow-circle-o-up" />
                               </TextButton>
@@ -100,7 +100,7 @@ export class FormArrayComponent extends React.Component<
                                 onClick={() => {
                                   this.props.move(index, index + 1);
                                 }}
-                                visible={index < values.length - 1}
+                                enable={index < values.length - 1}
                               >
                                 <i className="fa fa-arrow-circle-o-down" />
                               </TextButton>
@@ -108,7 +108,7 @@ export class FormArrayComponent extends React.Component<
                           )}
                           <TextButton
                             onClick={() => this.props.remove(index)}
-                            visible={index + 1 > minElements}
+                            enable={values.length > minElements}
                           >
                             <i className="fa fa-trash-o" />
                           </TextButton>
@@ -122,9 +122,7 @@ export class FormArrayComponent extends React.Component<
             </FormBuilder>
           );
         })}
-        <TextButton
-          onClick={() => this.props.push(getArrayRows(1, definition))}
-        >
+        <TextButton onClick={() => this.props.push(getNewArrayRow(definition))}>
           {options.i18nAddElementText || '+ Add Another'}
         </TextButton>
       </>

@@ -5,41 +5,34 @@ import {
   ConfigurationProperty,
   Connection,
   DataShape,
-  Extension,
   Flow,
-  IConnectionWithIconFile,
   IndexedStep,
   Integration,
   IntegrationOverview,
   Step,
+  StepKind,
   StringMap,
 } from '@syndesis/models';
-import { key } from '@syndesis/utils';
+import { key as generateKey } from '@syndesis/utils';
 import produce from 'immer';
 import {
   AGGREGATE,
   API_PROVIDER,
+  CHOICE,
   DataShapeKinds,
+  DataShapeKindType,
   ENDPOINT,
+  EXCERPT_METADATA_KEY,
+  FLOW,
+  FLOW_KIND_METADATA_KEY,
+  FlowKind,
+  FlowType,
+  ITypedFlow,
+  NEW_INTEGRATION,
+  NEW_INTEGRATION_ID,
+  PRIMARY_FLOW_ID_METADATA_KEY,
+  STEP_ID_METADATA_KEY,
 } from '../constants';
-import { getConnectionIcon } from './connectionFunctions';
-
-export const NEW_INTEGRATION_ID = 'new-integration';
-export const NEW_INTEGRATION = {
-  id: NEW_INTEGRATION_ID,
-  name: '',
-  tags: [],
-} as Integration;
-
-export type DataShapeKindType =
-  | 'ANY'
-  | 'JAVA'
-  | 'JSON_SCHEMA'
-  | 'JSON_INSTANCE'
-  | 'XML_SCHEMA'
-  | 'XML_SCHEMA_INSPECTED'
-  | 'XML_INSTANCE'
-  | 'NONE';
 
 export function toDataShapeKindType(kind?: DataShapeKinds): DataShapeKindType {
   return kind!.toLowerCase() as DataShapeKindType;
@@ -92,27 +85,11 @@ export function getEmptyIntegration(): Integration {
   return produce(NEW_INTEGRATION, draft => {
     draft.flows = [
       {
-        id: key(),
+        id: generateKey(),
         name: '',
         steps: [],
       },
     ];
-  });
-}
-
-/**
- * updates the name of an integration.
- *
- * @param integration
- * @param name
- */
-
-export function setIntegrationName(
-  integration: Integration,
-  name: string
-): Integration {
-  return produce(integration, nextIntegration => {
-    nextIntegration.name = name;
   });
 }
 
@@ -187,82 +164,16 @@ export function getSteps(integration: Integration, flowId: string): Step[] {
   }
 }
 
-/**
- * Returns the start icon representing the provided integration
- * @param integration
- */
-export function getStartIcon(apiUri: string, integration: Integration) {
-  const flow = integration.flows![0];
-  return getIntegrationStepIcon(apiUri, integration, flow.id!, 0);
-}
-
-/**
- * Returns the ending icon representing the provided integration
- * @param integration
- */
-export function getFinishIcon(apiUri: string, integration: Integration) {
-  const flow = integration.flows![0];
-  return getIntegrationStepIcon(
-    apiUri,
-    integration,
-    flow.id!,
-    flow.steps!.length - 1
-  );
-}
-
-export function getExtensionIcon(extension: Extension) {
-  return extension.icon || ''; // TODO: a default icon?
-}
-
-export function getStepKindIcon(stepKind: Step['stepKind']) {
-  return `/icons/steps/${stepKind}.svg`;
-}
-
-/**
- * Returns the icon for the supplied step index of the supplied flow index
- * @param apiUri
- * @param integration
- * @param flowId
- * @param stepIndex
- */
-export function getIntegrationStepIcon(
-  apiUri: string,
-  integration: Integration,
-  flowId: string,
-  stepIndex: number
-): string {
-  const step = getStep(integration, flowId, stepIndex);
-  return getStepIcon(apiUri, step!);
-}
-
-/**
- * Returns the icon for the supplied step
- * @param apiUri
- * @param step
- */
-export function getStepIcon(apiUri: string, step: Step): string {
-  if (step.connection) {
-    const connection = step.connection as IConnectionWithIconFile;
-    return getConnectionIcon(apiUri, connection);
-  }
-  // The step is an extension
-  if (step.extension) {
-    return getExtensionIcon(step.extension);
-  }
-  // It's just a step
-  return getStepKindIcon(step.stepKind);
-}
-
 //
 // Various helper functions that the current flow service uses to build an integration object
 //
 
 function setFlowId(flow: Flow) {
-  return flow.id ? flow : { ...flow, ...{ id: key() } };
+  return flow.id ? flow : { ...flow, ...{ id: generateKey() } };
 }
 
 function setStepId(step: Step) {
-  return step.id ? step : { ...step, ...{ id: key() } };
+  return step.id ? step : { ...step, ...{ id: generateKey() } };
 }
 
 /**
@@ -460,18 +371,13 @@ export function setIntegrationProperty(
 }
 
 export function createStep(): Step {
-  return { id: key() };
+  return { id: generateKey() };
 }
 
 export function createConnectionStep(): Step {
   const step = createStep();
   step.stepKind = 'endpoint';
   return step;
-}
-
-// TODO: Remove this TypeScript anti-pattern when the time is right
-export function createIntegration() {
-  return {} as Integration;
 }
 
 /**
@@ -680,13 +586,24 @@ export function stringifyValues(configuredProperties: any) {
  * @param integration
  */
 export function prepareIntegrationForSaving(integration: Integration) {
+  const { id } = integration;
   const flows = validateFlows(integration.flows);
   const tags = buildTags(integration.flows, integration.tags);
-  return { ...integration, tags, flows };
+  return {
+    ...integration,
+    flows,
+    id: id === NEW_INTEGRATION_ID ? undefined : id,
+    tags,
+  };
 }
 
-export function sanitizeFlow(flow: Flow): Flow {
-  flow.steps = flow.steps || [];
+export type GetSanitizedSteps = (steps: Step[]) => Promise<Step[]>;
+
+export async function sanitizeFlow(
+  flow: Flow | ITypedFlow,
+  getSanitizedSteps: GetSanitizedSteps
+): Promise<Flow> {
+  flow.steps = await getSanitizedSteps(flow.steps || []);
   // make sure we have all the connection ids as tags for the flow
   flow.tags = Array.from(
     new Set([
@@ -696,7 +613,8 @@ export function sanitizeFlow(flow: Flow): Flow {
         .map(s => s.connection!.id),
     ])
   ) as string[];
-
+  // Ensure the type is set properly on the flow, if it's not set we assume it's a primary flow
+  (flow as ITypedFlow).type = (flow as ITypedFlow).type || FlowType.PRIMARY;
   // for the api provider, if a flow has been modified we change the last
   // step of the flow to automatically set a return code of 200, unless
   // already modified by the user. Also, we update the flow metadata to
@@ -741,9 +659,14 @@ export function getFlow(integration: Integration, flowId: string) {
  * Returns a new integration object, adding or replacing the supplied flow
  * @param integration
  * @param flow
+ * @param getSanitizedSteps
  */
-export function setFlow(integration: Integration, flow: Flow) {
-  flow = sanitizeFlow(flow);
+export async function setFlow(
+  integration: Integration,
+  flow: Flow,
+  getSanitizedSteps: GetSanitizedSteps
+) {
+  flow = await sanitizeFlow(flow, getSanitizedSteps);
   if (getFlow(integration, flow.id!)) {
     return {
       ...integration,
@@ -760,21 +683,61 @@ export function setFlow(integration: Integration, flow: Flow) {
 }
 
 /**
+ * Returns a new integration object containing the supplied conditional flows for the given step ID
+ * @param integration
+ * @param newFlows
+ * @param configuredFlowIds
+ * @param defaultFlowId
+ * @param stepId
+ */
+export function reconcileConditionalFlows(
+  integration: Integration,
+  newFlows: Flow[],
+  stepId: string,
+  descriptor: ActionDescriptor
+) {
+  const flowsWithoutStepId = getFlowsWithoutLinkedStepId(
+    integration.flows!,
+    stepId
+  );
+  const updatedFlows = newFlows.map(flow => {
+    const newStep = setDataShapeOnStep(
+      { ...flow.steps![0] },
+      descriptor.outputDataShape!,
+      false
+    );
+    return applyUpdatedStep(flow, newStep, 0);
+  });
+  return { ...integration, flows: [...flowsWithoutStepId, ...updatedFlows] };
+}
+
+export function getFlowsWithoutLinkedStepId(flows: Flow[], stepId: string) {
+  return flows.filter(
+    flow =>
+      (flow as ITypedFlow).type === FlowType.PRIMARY ||
+      (flow as ITypedFlow).type === FlowType.API_PROVIDER ||
+      getMetadataValue(STEP_ID_METADATA_KEY, flow.metadata) !== stepId
+  );
+}
+
+/**
  * Inserts the supplied step into the indicated flow after the given position
  * @param integration
  * @param flowId
  * @param step
  * @param position
+ * @param getSanitizedSteps
  */
 export function insertStepIntoFlowAfter(
   integration: Integration,
   flowId: string,
   step: Step,
-  position: number
+  position: number,
+  getSanitizedSteps: GetSanitizedSteps
 ) {
   const flow = getFlow(integration, flowId);
   const steps = insertStepAfter(flow!.steps!, step, position);
-  return setFlow(integration, { ...flow!, steps });
+  return setFlow(integration, { ...flow!, steps }, getSanitizedSteps);
 }
 
 /**
@@ -783,16 +746,18 @@ export function insertStepIntoFlowAfter(
  * @param flowId
  * @param step
  * @param position
+ * @param getSanitizedSteps
  */
 export function insertStepIntoFlowBefore(
   integration: Integration,
   flowId: string,
   step: Step,
-  position: number
+  position: number,
+  getSanitizedSteps: GetSanitizedSteps
 ) {
   const flow = getFlow(integration, flowId);
   const steps = insertStepBefore(flow!.steps!, step, position);
-  return setFlow(integration, { ...flow!, steps });
+  return setFlow(integration, { ...flow!, steps }, getSanitizedSteps);
 }
 
 /**
@@ -801,20 +766,36 @@ export function insertStepIntoFlowBefore(
  * @param flowId
  * @param step
  * @param position
+ * @param getSanitizedSteps
  */
 export function setStepInFlow(
   integration: Integration,
   flowId: string,
   step: Step,
-  position: number
+  position: number,
+  getSanitizedSteps: GetSanitizedSteps
 ) {
   const flow = getFlow(integration, flowId);
+  return setFlow(
+    integration,
+    applyUpdatedStep(flow!, step, position),
+    getSanitizedSteps
+  );
+}
+
+/**
+ * Returns a new flow object with the supplied step set at the given position
+ * @param flow
+ * @param step
+ * @param position
+ */
+export function applyUpdatedStep(flow: Flow, step: Step, position: number) {
   const steps = [...flow!.steps!];
   if (typeof step.id === 'undefined') {
-    step.id = key();
+    step.id = generateKey();
   }
   steps[position] = { ...step };
-  return setFlow(integration, { ...flow!, steps });
+  return { ...flow!, steps };
 }
 
 /**
@@ -822,14 +803,24 @@ export function setStepInFlow(
  * @param integration
  * @param flowId
  * @param position
+ * @param getSanitizedSteps
  */
 export function removeStepFromFlow(
   integration: Integration,
   flowId: string,
-  position: number
+  position: number,
+  getSanitizedSteps: GetSanitizedSteps
 ) {
   const flow = getFlow(integration, flowId);
   const steps = getSteps(integration, flowId);
+  const toDelete = getStep(integration, flowId, position)!;
+
+  // special handling for conditional flows, related flows need
+  // to be removed from the integration as well.
+  const flows =
+    toDelete.stepKind === CHOICE
+      ? getFlowsWithoutLinkedStepId(integration.flows!, toDelete.id!)
+      : integration.flows;
 
   if (
     position === getFirstPosition(integration, flowId) ||
@@ -841,9 +832,11 @@ export function removeStepFromFlow(
     steps.splice(position, 1);
   }
 
-  return produce(integration, newInt => {
-    setFlow(newInt, { ...flow!, steps });
-  });
+  return setFlow(
+    { ...integration, flows },
+    { ...flow!, steps },
+    getSanitizedSteps
+  );
 }
 
 /**
@@ -888,6 +881,48 @@ export function createFlowWithId(id: string) {
   return {
     id,
     steps: [createConnectionStep(), createConnectionStep()],
+  } as Flow;
+}
+
+/**
+ * Create a new alternate flow and relate it to the supplied step
+ * @param name
+ * @param description
+ * @param kind
+ * @param primaryFlowId
+ * @param flowConnectionTemplate
+ * @param step
+ * @param useId - ID to use instead of generating one
+ */
+export function createConditionalFlow(
+  name: string,
+  description: string,
+  kind: FlowKind,
+  primaryFlowId: string,
+  flowConnectionTemplate: Connection,
+  step: StepKind,
+  useId?: string
+) {
+  if (typeof step.id === 'undefined') {
+    throw Error('Cannot create conditional flow for a step with no ID set');
+  }
+  const flowId = useId || generateKey();
+  return {
+    connections: [],
+    description,
+    id: flowId,
+    metadata: {
+      [EXCERPT_METADATA_KEY]: '',
+      [FLOW_KIND_METADATA_KEY]: kind,
+      [PRIMARY_FLOW_ID_METADATA_KEY]: primaryFlowId,
+      [STEP_ID_METADATA_KEY]: step.id,
+    },
+    name,
+    steps: [
+      createConditionalFlowStart(flowId, flowConnectionTemplate, step),
+      createConditionalFlowEnd(flowConnectionTemplate),
+    ],
+    type: FlowType.ALTERNATE,
   } as Flow;
 }
 
@@ -1380,6 +1415,229 @@ export function isMiddleStep(
   );
 }
 
+/**
+ * Creates the start connection for a conditional flow
+ * @param flowId
+ * @param connection
+ * @param thisStep
+ */
+export function createConditionalFlowStart(
+  flowId: string,
+  connection: Connection,
+  thisStep: StepKind
+): StepKind {
+  const step = {
+    ...createStepWithConnection(connection),
+    action: getConnectorAction('io.syndesis:flow-start', connection),
+    configuredProperties: {
+      name: flowId,
+    },
+    description: '',
+    metadata: {
+      configured: 'true',
+    },
+    name: 'Flow start',
+    properties: {},
+  } as StepKind;
+  return adaptOutputShape(thisStep, step);
+}
+
+/**
+ * Creates the end connection for a conditional flow
+ * @param connection
+ */
+export function createConditionalFlowEnd(connection: Connection): StepKind {
+  return {
+    ...createStepWithConnection(connection),
+    action: getConnectorAction('io.syndesis:flow-end', connection),
+    description: '',
+    metadata: {
+      configured: 'true',
+    },
+    name: 'Flow end',
+    properties: {},
+  } as StepKind;
+}
+
+/**
+ * Accessor helper function to get the given action out of a connection's connector
+ * @param id
+ * @param connection
+ */
+function getConnectorAction(id: string, connection: Connection): Action {
+  return connection!.connector!.actions!.find(
+    action => action.id === id
+  ) as Action;
+}
+
+/**
+ * Helper function to ensure a conditional flow step assumes the correct
+ * output shape that reflects the required input shape it's being inserted
+ * in front of.
+ * @param thisStep
+ * @param step
+ */
+function adaptOutputShape(thisStep: StepKind, step: StepKind) {
+  if (
+    thisStep &&
+    thisStep.action &&
+    thisStep.action.descriptor &&
+    thisStep.action.descriptor.inputDataShape
+  ) {
+    step.action!.descriptor!.outputDataShape =
+      thisStep.action.descriptor.inputDataShape;
+  }
+  return step;
+}
+
+/**
+ * Helper function to deal with the metdata map for a given thing that can
+ * have a metadata map or not.
+ * @param mapKey
+ * @param metadata
+ * @param defaultValue - value to return if the key isn't set in the map
+ */
+export function getMetadataValue<T>(
+  mapKey: string,
+  metadata?: StringMap<T>,
+  defaultValue?: T
+) {
+  return typeof metadata !== 'undefined' ? metadata[mapKey] : defaultValue;
+}
+
+/**
+ * Returns true if the given integration is an API provider integration
+ * @param integration
+ */
 export function isIntegrationApiProvider(integration: IntegrationOverview) {
   return (integration.tags || []).includes(API_PROVIDER);
+}
+
+/**
+ * Returns true if the given flow is the primary flow for an integration
+ * @param flow
+ */
+export function isPrimaryFlow(flow: ITypedFlow) {
+  return (
+    typeof flow !== 'undefined' &&
+    (typeof flow.type === 'undefined' ||
+      flow.type === FlowType.PRIMARY ||
+      flow.type === FlowType.API_PROVIDER)
+  );
+}
+
+/**
+ * Returns true if the given flow is an alternate flow, created by the conditional flow step
+ * @param flow
+ */
+export function isAlternateFlow(flow: ITypedFlow) {
+  if (typeof flow.type !== 'undefined') {
+    return flow.type === FlowType.ALTERNATE;
+  }
+  const step = (flow.steps || [])[0];
+  try {
+    return step.connection!.connectorId === FLOW;
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+/**
+ * Returns true if the given flow is a conditional flow created from a conditional flow step
+ * @param flow
+ */
+export function isConditionalFlow(flow: ITypedFlow) {
+  return (
+    isAlternateFlow(flow) &&
+    getMetadataValue<string>('kind', flow.metadata) === FlowKind.CONDITIONAL
+  );
+}
+
+/**
+ * Returns true if the given flow is the default flow for a conditional flow step
+ * @param flow
+ */
+export function isDefaultFlow(flow: ITypedFlow) {
+  return (
+    isAlternateFlow(flow) &&
+    getMetadataValue<string>(FLOW_KIND_METADATA_KEY, flow.metadata) ===
+      FlowKind.DEFAULT
+  );
+}
+
+/**
+ * Returns true if the given flow is an API provider flow
+ * @param flow
+ */
+export function isApiProviderFlow(flow: ITypedFlow) {
+  const step = (flow.steps || [])[0];
+  try {
+    return step.connection!.connectorId === API_PROVIDER;
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+/**
+ * Returns all API provider flows in the given integration
+ * @param integration
+ */
+export function getApiProviderFlows(integration: IntegrationOverview) {
+  return (integration.flows || []).filter(isApiProviderFlow);
+}
+
+/**
+ * Returns all conditional flows in the given integration
+ * @param integration
+ */
+export function getConditionalFlows(integration: IntegrationOverview) {
+  return (integration.flows || []).filter(isConditionalFlow);
+}
+
+/**
+ * Returns all default flows in the given integration, there should only be one however
+ * @param integration
+ */
+export function getDefaultFlow(integration: IntegrationOverview) {
+  return (integration.flows || []).filter(isDefaultFlow);
+}
+
+export function getConditionalFlowGroups(integration: IntegrationOverview) {
+  // Add default flows to the very end of the list, ensures that default flows are always at the end of a group
+  const conditionalFlows = [
+    ...getConditionalFlows(integration),
+    ...getDefaultFlow(integration),
+  ];
+  // potentially we have many flows that belong to different steps, so group flows by step id
+  const flowGroups: Array<{ id: string; flows: Flow[] }> = [];
+  conditionalFlows.forEach(flow => {
+    const stepId = getMetadataValue<string>('stepId', flow.metadata);
+    const flowGroup = flowGroups.find(group => group.id === stepId);
+    if (flowGroup) {
+      flowGroup.flows.push(flow);
+    } else {
+      flowGroups.push({ id: stepId!, flows: [flow] });
+    }
+  });
+  return flowGroups;
+}
+
+export function getConditionalFlowGroupsFor(
+  integration: IntegrationOverview,
+  primaryId: string
+) {
+  const flowGroups = getConditionalFlowGroups(integration);
+  return flowGroups.filter(
+    group => getPrimaryFlowId(integration, group.flows[0]) === primaryId
+  );
+}
+
+export function getPrimaryFlowId(integration: IntegrationOverview, flow: Flow) {
+  return getMetadataValue<string>(
+    'primaryFlowId',
+    flow.metadata,
+    integration.flows![0].id
+  );
 }
